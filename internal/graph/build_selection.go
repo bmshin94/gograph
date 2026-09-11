@@ -9,6 +9,7 @@ type BuildSelection struct {
 	Compiler    string   `json:"compiler"`
 	CgoEnabled  bool     `json:"cgo_enabled"`
 	BuildTags   []string `json:"build_tags"`
+	ExcludeDirs []string `json:"exclude_dirs,omitempty"`
 	ToolTags    []string `json:"tool_tags"`
 	ReleaseTags []string `json:"release_tags"`
 }

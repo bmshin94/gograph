@@ -201,6 +201,11 @@ to publish a required startup auto-build prevents the server from starting.
 
 ## Query contracts and upgrades
 
+When unrelated directories block precise builds, use
+`gograph build . --precise --exclude-dirs=legacy,examples/broken` and add the same
+flag to the registered `gograph mcp` startup command. Restart the server afterward.
+See [directory exclusions](build-selection.md) for selection and dependency limits.
+
 Common row-list tools now return bounded `gograph.results.v1` pages with
 `total`, `returned`, `truncated`, and `next_cursor`. Default limit is 100,
 maximum 200, with a 16 KiB native budget; follow the cursor on the same snapshot

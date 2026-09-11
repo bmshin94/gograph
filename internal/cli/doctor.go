@@ -30,18 +30,19 @@ type doctorDocument struct {
 }
 
 type doctorRepository struct {
-	Root                string `json:"root"`
-	GraphAvailable      bool   `json:"graph_available"`
-	Freshness           string `json:"freshness"`
-	AnalysisMode        string `json:"analysis_mode,omitempty"`
-	ASTComplete         bool   `json:"ast_complete"`
-	PrecisionRequested  bool   `json:"precision_requested"`
-	PreciseEnrichment   string `json:"precise_enrichment,omitempty"`
-	CallResolution      string `json:"call_resolution,omitempty"`
-	TestCallResolution  string `json:"test_call_resolution,omitempty"`
-	ArtifactFingerprint string `json:"artifact_fingerprint,omitempty"`
-	DiagnosticCode      string `json:"diagnostic_code,omitempty"`
-	Diagnostic          string `json:"diagnostic,omitempty"`
+	ExcludeDirs         []string `json:"exclude_dirs,omitempty"`
+	Root                string   `json:"root"`
+	GraphAvailable      bool     `json:"graph_available"`
+	Freshness           string   `json:"freshness"`
+	AnalysisMode        string   `json:"analysis_mode,omitempty"`
+	ASTComplete         bool     `json:"ast_complete"`
+	PrecisionRequested  bool     `json:"precision_requested"`
+	PreciseEnrichment   string   `json:"precise_enrichment,omitempty"`
+	CallResolution      string   `json:"call_resolution,omitempty"`
+	TestCallResolution  string   `json:"test_call_resolution,omitempty"`
+	ArtifactFingerprint string   `json:"artifact_fingerprint,omitempty"`
+	DiagnosticCode      string   `json:"diagnostic_code,omitempty"`
+	Diagnostic          string   `json:"diagnostic,omitempty"`
 }
 
 type doctorExecutable struct {
@@ -227,6 +228,12 @@ func inspectDoctorRepository(start string, findings []doctorFinding) (*doctorRep
 	}
 	repository := &doctorRepository{Root: root, Freshness: "unavailable"}
 	snapshot, err := (validation.RepositoryLoader{AllowCheckoutSourceAuthority: true}).Load(context.Background(), root)
+	// Doctor describes the artifact's declared selection, unlike machine
+	// validation, which must retain its independently requested scope.
+	if snapshot.Graph != nil && snapshot.Graph.Build != nil && snapshot.Graph.Build.Selection != nil && len(snapshot.Graph.Build.Selection.ExcludeDirs) > 0 {
+		repository.ExcludeDirs = append([]string(nil), snapshot.Graph.Build.Selection.ExcludeDirs...)
+		snapshot, err = (validation.RepositoryLoader{ExcludeDirs: repository.ExcludeDirs, AllowCheckoutSourceAuthority: true}).Load(context.Background(), root)
+	}
 	repository.GraphAvailable = snapshot.Graph != nil
 	if snapshot.Freshness != "" {
 		repository.Freshness = snapshot.Freshness

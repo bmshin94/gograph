@@ -146,8 +146,11 @@ func enrichProductionWithConfig(ctx context.Context, absRoot, analysisRoot strin
 		BuildFlags: config.Flags(),
 	}
 
-	// Load all packages
-	initial, err := packages.Load(cfg, "./...")
+	patterns, err := packagePatterns(g, config)
+	if err != nil {
+		return err
+	}
+	initial, err := packages.Load(cfg, patterns...)
 	if err := ctx.Err(); err != nil {
 		return err
 	}

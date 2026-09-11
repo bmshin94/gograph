@@ -22,6 +22,7 @@ func buildDeclarationBaseline(ctx context.Context, root string, selections ...*g
 		return nil, fmt.Errorf("baseline source selection: %v", errs)
 	}
 	g := &graph.Graph{Root: root, Build: &graph.BuildMetadata{Selection: graph.CaptureBuildSelection(config.BuildContext())}}
+	g.Build.Selection.ExcludeDirs = config.ExcludeDirs()
 	for _, path := range paths {
 		g.Packages = append(g.Packages, graph.PackageNode{Dir: filepath.Dir(graphFileRelative(root, path))})
 	}

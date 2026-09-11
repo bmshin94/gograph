@@ -26,6 +26,7 @@ import (
 // go/build and go/packages. Callers should use Environment and Flags, which
 // return defensive copies, when configuring subprocess-backed package loads.
 type Config struct {
+	excludeDirs    []string
 	build          build.Context
 	environment    []string
 	buildFlags     []string
@@ -39,7 +40,8 @@ type Config struct {
 // passed as one explicit -tags flag, which follows cmd/go's normal precedence
 // and replaces any -tags value inherited from GOFLAGS.
 type ResolveOptions struct {
-	BuildTags []string
+	BuildTags   []string
+	ExcludeDirs []string
 }
 
 // NormalizeBuildTags validates and canonicalizes comma-separated Go build-tag
@@ -87,6 +89,10 @@ func Resolve(ctx context.Context, root string) (Config, error) {
 // ResolveWithOptions asks cmd/go for its effective build context after applying
 // the caller's explicit source-selection options.
 func ResolveWithOptions(ctx context.Context, root string, options ResolveOptions) (Config, error) {
+	excluded, err := NormalizeExcludeDirs(options.ExcludeDirs)
+	if err != nil {
+		return Config{}, err
+	}
 	tags, err := NormalizeBuildTags(options.BuildTags)
 	if err != nil {
 		return Config{}, err
@@ -94,6 +100,9 @@ func ResolveWithOptions(ctx context.Context, root string, options ResolveOptions
 	canonicalRoot, err := canonicalDirectory(root)
 	if err != nil {
 		return Config{}, fmt.Errorf("resolve Go build root: %w", err)
+	}
+	if err := ValidateExcludeDirs(canonicalRoot, excluded); err != nil {
+		return Config{}, err
 	}
 	// Cmd/go discovers module/workspace files, their sums, and vendoring
 	// metadata before evaluating even otherwise repository-independent queries.
@@ -107,7 +116,9 @@ func ResolveWithOptions(ctx context.Context, root string, options ResolveOptions
 	// not discover a different GOMOD merely because gograph was invoked from
 	// inside rather than outside a symlinked scan root.
 	environment := setEnvironmentValue(os.Environ(), "PWD", canonicalRoot)
-	return resolve(ctx, canonicalRoot, environment, tags, runGoCommand)
+	config, err := resolve(ctx, canonicalRoot, environment, tags, runGoCommand)
+	config.excludeDirs = excluded
+	return config, err
 }
 
 // ValidateToolchainMetadata verifies every local metadata path that cmd/go
@@ -438,11 +449,15 @@ func ResolveOrDefault(ctx context.Context, root string) (Config, error) {
 // ResolveOrDefaultWithOptions preserves explicit build tags in the AST
 // fallback while returning the cmd/go resolution error to precise callers.
 func ResolveOrDefaultWithOptions(ctx context.Context, root string, options ResolveOptions) (Config, error) {
+	excluded, normalizeErr := NormalizeExcludeDirs(options.ExcludeDirs)
+	if normalizeErr != nil {
+		return Config{}, normalizeErr
+	}
 	tags, normalizeErr := NormalizeBuildTags(options.BuildTags)
 	if normalizeErr != nil {
 		return Config{}, normalizeErr
 	}
-	config, err := ResolveWithOptions(ctx, root, ResolveOptions{BuildTags: tags})
+	config, err := ResolveWithOptions(ctx, root, ResolveOptions{BuildTags: tags, ExcludeDirs: excluded})
 	if err == nil {
 		return config, nil
 	}
@@ -450,7 +465,9 @@ func ResolveOrDefaultWithOptions(ctx context.Context, root string, options Resol
 	if len(tags) > 0 {
 		fallback.BuildTags = append([]string(nil), tags...)
 	}
-	return FromBuildContext(fallback, os.Environ()), err
+	config = FromBuildContext(fallback, os.Environ())
+	config.excludeDirs = excluded
+	return config, err
 }
 
 type goCommandRunner func(context.Context, string, []string, ...string) (stdout, stderr []byte, err error)
@@ -644,6 +661,7 @@ func (c Config) Fingerprint() string {
 		GOPATH         string   `json:"gopath"`
 		InstallSuffix  string   `json:"install_suffix"`
 		BuildTags      []string `json:"build_tags"`
+		ExcludeDirs    []string `json:"exclude_dirs,omitempty"`
 		ToolTags       []string `json:"tool_tags"`
 		ReleaseTags    []string `json:"release_tags"`
 		ModulesEnabled bool     `json:"modules_enabled"`
@@ -660,6 +678,7 @@ func (c Config) Fingerprint() string {
 		GOPATH:         ctx.GOPATH,
 		InstallSuffix:  ctx.InstallSuffix,
 		BuildTags:      buildTags,
+		ExcludeDirs:    c.ExcludeDirs(),
 		ToolTags:       toolTags,
 		ReleaseTags:    releaseTags,
 		ModulesEnabled: c.ModulesEnabled(),

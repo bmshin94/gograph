@@ -19,6 +19,11 @@ func changesSelection(ctx context.Context, root string, selection *graph.BuildSe
 	config, configErr := buildctx.ResolveOrDefault(ctx, root)
 	if selection != nil {
 		config = config.WithBuildContext(selection.Apply(config.BuildContext()))
+		var exclusionErr error
+		config, exclusionErr = config.WithExcludeDirs(selection.ExcludeDirs)
+		if exclusionErr != nil {
+			return config, nil, []error{exclusionErr}
+		}
 	}
 	paths, errs := scanner.WalkWithConfig(root, config)
 	if configErr != nil {

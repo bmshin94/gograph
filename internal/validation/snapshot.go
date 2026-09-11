@@ -43,7 +43,8 @@ type SnapshotError struct {
 func (e *SnapshotError) Error() string { return e.Diagnostic.Message }
 
 type RepositoryLoader struct {
-	BuildTags []string
+	BuildTags   []string
+	ExcludeDirs []string
 	// AllowCheckoutSourceAuthority permits go.work members outside a nested
 	// module root when ToolchainSourceRoots has confined them beneath the
 	// nearest real Git checkout. Machine validation leaves this false so its
@@ -98,7 +99,7 @@ func (loader RepositoryLoader) Load(ctx context.Context, repositoryRoot string) 
 		Freshness:        "unknown",
 	}
 
-	current, err := captureSourceState(ctx, root, loader.BuildTags, loader.AllowCheckoutSourceAuthority)
+	current, err := captureSourceState(ctx, root, loader.BuildTags, loader.AllowCheckoutSourceAuthority, loader.ExcludeDirs)
 	if err != nil {
 		return snapshot, err
 	}
@@ -123,7 +124,7 @@ func (loader RepositoryLoader) Load(ctx context.Context, repositoryRoot string) 
 }
 
 func (loader RepositoryLoader) VerifyCurrent(ctx context.Context, snapshot Snapshot) error {
-	current, err := captureSourceState(ctx, snapshot.Root, loader.BuildTags, loader.AllowCheckoutSourceAuthority)
+	current, err := captureSourceState(ctx, snapshot.Root, loader.BuildTags, loader.AllowCheckoutSourceAuthority, loader.ExcludeDirs)
 	if err != nil {
 		return err
 	}
@@ -139,11 +140,15 @@ type sourceState struct {
 	Files                map[string]string
 }
 
-func captureSourceState(ctx context.Context, root string, buildTags []string, allowCheckoutSourceAuthority bool) (sourceState, error) {
+func captureSourceState(ctx context.Context, root string, buildTags []string, allowCheckoutSourceAuthority bool, exclusions ...[]string) (sourceState, error) {
 	if err := ctx.Err(); err != nil {
 		return sourceState{}, snapshotError(ReasonInternalError, "context_done", err.Error(), "")
 	}
-	config, err := buildctx.ResolveWithOptions(ctx, root, buildctx.ResolveOptions{BuildTags: buildTags})
+	options := buildctx.ResolveOptions{BuildTags: buildTags}
+	for _, dirs := range exclusions {
+		options.ExcludeDirs = append(options.ExcludeDirs, dirs...)
+	}
+	config, err := buildctx.ResolveWithOptions(ctx, root, options)
 	if err != nil {
 		return sourceState{}, snapshotError(ReasonAnalysisIncomplete, "build_context_unavailable", err.Error(), "")
 	}

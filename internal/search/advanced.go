@@ -462,6 +462,9 @@ type GodObjectCandidate struct {
 //     from the active build selection (stale case only).
 //   - build_context_changed: true when source-selection inputs changed.
 func Stale(g *graph.Graph, root string) StaleResult {
+	if g != nil && g.Build != nil && g.Build.Selection != nil && len(g.Build.Selection.ExcludeDirs) > 0 {
+		return staleWithRecordedExclusions(g, root)
+	}
 	files, buildContextFingerprint, _ := scanner.WalkWithFingerprint(root)
 	return staleWithSelection(g, root, files, buildContextFingerprint)
 }

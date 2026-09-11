@@ -1,5 +1,16 @@
 # Release Notes
 
+## v1.7.1 — 2026-09-11
+
+- Added `build`, `mcp`, and `stale --exclude-dirs=dir1,dir2` for literal
+  repository-relative directory subtrees. AST and precise package selection
+  agree, including test packages; MCP refreshes preserve startup exclusions.
+- Exclusions are normalized, recorded, and fingerprinted. Workspace members
+  support the same selection through manifest `exclude_dirs` and shared CLI/MCP
+  validation. Included imports still must type-check; source safety is unchanged.
+- Updated help, capabilities, and documentation with scope, freshness, and
+  dependency limitations. Existing MCP processes need a restart to use the flag.
+
 ## v1.7.0 — 2026-09-06
 
 ### Query correctness and bounded agent responses

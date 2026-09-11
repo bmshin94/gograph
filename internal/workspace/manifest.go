@@ -116,6 +116,9 @@ func normalizeAndValidateManifest(root string, manifest *Manifest) error {
 	canonicalPaths := make(map[string]string)
 	for index := range manifest.Repositories {
 		repo := &manifest.Repositories[index]
+		if err := normalizeRepositoryExclusions(repo); err != nil {
+			return err
+		}
 		if !identifierPattern.MatchString(repo.ID) {
 			return fmt.Errorf("repositories[%d].id %q is invalid", index, repo.ID)
 		}

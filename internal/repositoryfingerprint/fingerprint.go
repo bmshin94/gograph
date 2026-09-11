@@ -34,6 +34,7 @@ type selection struct {
 	Compiler       string   `json:"compiler"`
 	CgoEnabled     bool     `json:"cgo_enabled"`
 	BuildTags      []string `json:"build_tags"`
+	ExcludeDirs    []string `json:"exclude_dirs,omitempty"`
 	ToolTags       []string `json:"tool_tags"`
 	ReleaseTags    []string `json:"release_tags"`
 	InstallSuffix  string   `json:"install_suffix,omitempty"`
@@ -92,6 +93,7 @@ func Compute(ctx context.Context, root string, config buildctx.Config, selectedP
 		Build: selection{
 			GOOS: buildContext.GOOS, GOARCH: buildContext.GOARCH, Compiler: buildContext.Compiler,
 			CgoEnabled: buildContext.CgoEnabled, BuildTags: buildTags, ToolTags: toolTags,
+			ExcludeDirs: config.ExcludeDirs(),
 			ReleaseTags: releaseTags, InstallSuffix: buildContext.InstallSuffix,
 			ModulesEnabled: config.ModulesEnabled(), ModulePath: config.ModulePath(),
 		},

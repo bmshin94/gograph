@@ -48,7 +48,11 @@ func enrichTypedTestCalls(ctx context.Context, absRoot string, g *graph.Graph, c
 		BuildFlags: config.Flags(),
 		Tests:      true,
 	}
-	loaded, loadErr := packages.Load(cfg, "./...")
+	patterns, err := packagePatterns(g, config)
+	if err != nil {
+		return graph.TestCallResolutionPartial, err
+	}
+	loaded, loadErr := packages.Load(cfg, patterns...)
 	if err := ctx.Err(); err != nil {
 		return graph.TestCallResolutionPartial, err
 	}

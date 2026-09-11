@@ -448,6 +448,12 @@ refresh uses the same low-memory policy as CLI builds when those options are set
 An explicit --tags selection replaces GOFLAGS -tags and is retained by startup,
 incremental/precise refreshes, and baselines; gograph_capabilities reports both
 requested and effective build tags under analysis_build_context.
+Use --exclude-dirs=legacy,examples/broken with build or mcp to omit literal,
+repository-relative directory subtrees from AST and precise analysis targets.
+This selection is fingerprinted and retained by MCP refreshes; capabilities
+reports exclude_dirs under analysis_build_context. Imported dependencies still
+must type-check, and source safety checks are never disabled by exclusions.
+Workspace members declare exclude_dirs: [legacy, examples/broken] in the manifest.
 The persisted graph is bound to that effective Go environment and selection;
 starting MCP under a different GOWORK/build context treats it as stale and must
 refresh successfully or return a diagnostic instead of serving mismatched facts.
@@ -845,11 +851,12 @@ hook-guard           : PreToolUse hook — redirects indexed-repository Go symbo
 }
 
 type buildOptions struct {
-	Root    string
-	Precise bool
-	Strict  bool
-	Tags    []string
-	Memory  memorylimit.Policy
+	ExcludeDirs []string
+	Root        string
+	Precise     bool
+	Strict      bool
+	Tags        []string
+	Memory      memorylimit.Policy
 }
 
 func parseBuildTagsOption(args []string, index int, tags *[]string) (bool, int, error) {
@@ -890,7 +897,15 @@ func parseBuildArgs(args []string) (buildOptions, error) {
 				options.Strict = true
 				continue
 			}
-			handled, consumedThrough, err := parseBuildTagsOption(args, index, &options.Tags)
+			handled, consumedThrough, err := parseExcludeDirsOption(args, index, &options.ExcludeDirs)
+			if err != nil {
+				return buildOptions{}, err
+			}
+			if handled {
+				index = consumedThrough
+				continue
+			}
+			handled, consumedThrough, err = parseBuildTagsOption(args, index, &options.Tags)
 			if err != nil {
 				return buildOptions{}, err
 			}
@@ -948,6 +963,9 @@ func runBuild(args []string) int {
 	}
 
 	fmt.Printf("gograph build: scanning %s\n", absRoot)
+	if err := buildctx.ValidateExcludeDirs(absRoot, options.ExcludeDirs); err != nil {
+		return failCommandf("build", "invalid --exclude-dirs: %v", err)
+	}
 	if len(options.Tags) > 0 {
 		fmt.Printf("  build tags: %s\n", strings.Join(options.Tags, ","))
 	}
@@ -955,7 +973,10 @@ func runBuild(args []string) int {
 		fmt.Printf("  memory mode: %s\n", memoryPolicySummary(options.Memory))
 	}
 
-	buildConfig, configErr := resolveBuildConfigWithTags(absRoot, options.Tags)
+	buildConfig, configErr := resolveBuildConfigWithTags(absRoot, options.Tags, options.ExcludeDirs)
+	if len(options.ExcludeDirs) > 0 {
+		fmt.Printf("  excluded directories: %s\n", strings.Join(options.ExcludeDirs, ","))
+	}
 	previous, _ := loadGraph(absRoot)
 	g, err := buildGraphWithConfig(absRoot, buildConfig, configErr, previous)
 	if err != nil {
@@ -1014,11 +1035,11 @@ func buildGraphWithTags(absRoot string, tags []string) (*graph.Graph, error) {
 	return buildGraphWithTagsContext(context.Background(), absRoot, tags)
 }
 
-func buildGraphWithTagsContext(ctx context.Context, absRoot string, tags []string) (*graph.Graph, error) {
+func buildGraphWithTagsContext(ctx context.Context, absRoot string, tags []string, exclusions ...[]string) (*graph.Graph, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	buildConfig, configErr := buildctx.ResolveOrDefaultWithOptions(ctx, absRoot, buildctx.ResolveOptions{BuildTags: tags})
+	buildConfig, configErr := buildctx.ResolveOrDefaultWithOptions(ctx, absRoot, buildSelectionOptions(tags, exclusions...))
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -1055,6 +1076,7 @@ func buildGraphWithConfigContext(ctx context.Context, absRoot string, buildConfi
 		SourceFingerprint:       sourceIdentity.Fingerprint,
 		Selection:               graph.CaptureBuildSelection(buildConfig.BuildContext()),
 	}
+	buildMetadata.Selection.ExcludeDirs = buildConfig.ExcludeDirs()
 	for _, e := range walkErrs {
 		fmt.Fprintf(os.Stderr, "  warning: %v\n", e)
 		buildMetadata.Warnings = append(buildMetadata.Warnings, e.Error())
@@ -1445,8 +1467,8 @@ func buildPreciseGraphWithMemoryAndTags(absRoot string, policy memorylimit.Polic
 	return buildPreciseGraphWithMemoryAndTagsContext(context.Background(), absRoot, policy, tags)
 }
 
-func buildPreciseGraphWithMemoryAndTagsContext(ctx context.Context, absRoot string, policy memorylimit.Policy, tags []string) (*graph.Graph, error) {
-	buildConfig, configErr := buildctx.ResolveOrDefaultWithOptions(ctx, absRoot, buildctx.ResolveOptions{BuildTags: tags})
+func buildPreciseGraphWithMemoryAndTagsContext(ctx context.Context, absRoot string, policy memorylimit.Policy, tags []string, exclusions ...[]string) (*graph.Graph, error) {
+	buildConfig, configErr := buildctx.ResolveOrDefaultWithOptions(ctx, absRoot, buildSelectionOptions(tags, exclusions...))
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -1470,8 +1492,8 @@ func resolveBuildConfig(absRoot string) (buildctx.Config, error) {
 	return resolveBuildConfigWithTags(absRoot, nil)
 }
 
-func resolveBuildConfigWithTags(absRoot string, tags []string) (buildctx.Config, error) {
-	return buildctx.ResolveOrDefaultWithOptions(context.Background(), absRoot, buildctx.ResolveOptions{BuildTags: tags})
+func resolveBuildConfigWithTags(absRoot string, tags []string, exclusions ...[]string) (buildctx.Config, error) {
+	return buildctx.ResolveOrDefaultWithOptions(context.Background(), absRoot, buildSelectionOptions(tags, exclusions...))
 }
 
 func precisionFallbackError(g *graph.Graph) error {
@@ -2270,6 +2292,7 @@ func shouldAdoptPersistedGraph(current, persisted *graph.Graph) bool {
 }
 
 type mcpOptions struct {
+	ExcludeDirs    []string
 	Root           string
 	PersistRefresh bool
 	Tags           []string
@@ -2299,7 +2322,15 @@ func parseMCPArgs(args []string) (mcpOptions, error) {
 				options.PersistRefresh = parsed
 				continue
 			}
-			handled, consumedThrough, err := parseBuildTagsOption(args, index, &options.Tags)
+			handled, consumedThrough, err := parseExcludeDirsOption(args, index, &options.ExcludeDirs)
+			if err != nil {
+				return mcpOptions{}, err
+			}
+			if handled {
+				index = consumedThrough
+				continue
+			}
+			handled, consumedThrough, err = parseBuildTagsOption(args, index, &options.Tags)
 			if err != nil {
 				return mcpOptions{}, err
 			}
@@ -2350,6 +2381,9 @@ func prepareMCPGraphWithState(options mcpOptions) (*graph.Graph, string, graphst
 	if err != nil {
 		return nil, "", graphstate.State{}, fmt.Errorf("resolving path: %w", err)
 	}
+	if err := buildctx.ValidateExcludeDirs(absRoot, options.ExcludeDirs); err != nil {
+		return nil, "", graphstate.State{}, fmt.Errorf("invalid --exclude-dirs: %w", err)
+	}
 
 	source := graphstate.SourcePersisted
 	refresh := graphstate.Refresh{Policy: "automatic", Attempted: false, Outcome: "not_attempted"}
@@ -2359,7 +2393,7 @@ func prepareMCPGraphWithState(options mcpOptions) (*graph.Graph, string, graphst
 		// Graph does not exist yet — build it automatically so Claude Desktop
 		// works without requiring a manual "gograph build ." step first.
 		fmt.Fprintf(os.Stderr, "graph unavailable or rebuild required, building automatically for %s...\n", absRoot)
-		g, err = buildGraphWithTags(absRoot, options.Tags)
+		g, err = buildGraphWithTagsContext(context.Background(), absRoot, options.Tags, options.ExcludeDirs)
 		if err != nil {
 			return nil, "", graphstate.State{}, fmt.Errorf("auto-building graph: %w", err)
 		}
@@ -2367,7 +2401,7 @@ func prepareMCPGraphWithState(options mcpOptions) (*graph.Graph, string, graphst
 		refresh = graphstate.Refresh{Policy: "automatic", Attempted: true, Outcome: "startup_build"}
 		persistence.Outcome = "not_requested"
 		if options.PersistRefresh {
-			buildConfig, _ := resolveBuildConfigWithTags(absRoot, options.Tags)
+			buildConfig, _ := resolveBuildConfigWithTags(absRoot, options.Tags, options.ExcludeDirs)
 			publication, publishErr := publishGraphArtifactsWithFreshness(absRoot, g, refreshArtifactPublication, func(candidate *graph.Graph, root string) search.StaleResult {
 				return search.StaleWithConfig(candidate, root, buildConfig)
 			})
@@ -2380,7 +2414,7 @@ func prepareMCPGraphWithState(options mcpOptions) (*graph.Graph, string, graphst
 		}
 	}
 	absRoot = graphRoot(g)
-	config, _ := resolveBuildConfigWithTags(absRoot, options.Tags)
+	config, _ := resolveBuildConfigWithTags(absRoot, options.Tags, options.ExcludeDirs)
 	stale := search.StaleWithConfig(g, absRoot, config).IsStale
 	freshness := graphstate.FreshnessCurrent
 	if stale {
@@ -2407,18 +2441,18 @@ func runMCP(args []string) int {
 		fmt.Fprintf(os.Stderr, "failed to prepare MCP graph: %v\n", err)
 		return 1
 	}
-	buildConfig, configErr := resolveBuildConfigWithTags(absRoot, options.Tags)
+	buildConfig, configErr := resolveBuildConfigWithTags(absRoot, options.Tags, options.ExcludeDirs)
 	if configErr != nil {
 		fmt.Fprintf(os.Stderr, "warning: MCP build context resolution failed: %v\n", configErr)
 	}
 	buildASTContext := func(ctx context.Context, root string) (*graph.Graph, error) {
-		return buildGraphWithTagsContext(ctx, root, options.Tags)
+		return buildGraphWithTagsContext(ctx, root, options.Tags, options.ExcludeDirs)
 	}
 	buildAST := func(root string) (*graph.Graph, error) {
 		return buildASTContext(context.Background(), root)
 	}
 	freshness := func(ctx context.Context, candidate *graph.Graph, root string) search.StaleResult {
-		config, _ := buildctx.ResolveOrDefaultWithOptions(ctx, root, buildctx.ResolveOptions{BuildTags: options.Tags})
+		config, _ := buildctx.ResolveOrDefaultWithOptions(ctx, root, buildSelectionOptions(options.Tags, options.ExcludeDirs))
 		return search.StaleWithConfig(candidate, root, config)
 	}
 
@@ -2430,7 +2464,7 @@ func runMCP(args []string) int {
 	}
 	preciseBuilder := func(ctx context.Context, root string) (*graph.Graph, error) {
 		controller.Reclaim()
-		built, buildErr := buildPreciseGraphWithMemoryAndTagsContext(ctx, root, options.Memory, options.Tags)
+		built, buildErr := buildPreciseGraphWithMemoryAndTagsContext(ctx, root, options.Memory, options.Tags, options.ExcludeDirs)
 		controller.Reclaim()
 		return built, buildErr
 	}
@@ -2446,6 +2480,7 @@ func runMCP(args []string) int {
 		RequestedMaxMemoryBytes: options.Memory.MaxBytes,
 		EffectiveMaxMemoryBytes: controller.BoundedEffectiveLimit(),
 		RequestedBuildTags:      append([]string(nil), options.Tags...),
+		ExcludeDirs:             append([]string(nil), options.ExcludeDirs...),
 		EffectiveBuildTags:      buildConfig.BuildContext().BuildTags,
 		GraphState:              graphState,
 		RefreshContext:          refreshContext,
@@ -2942,7 +2977,7 @@ OUTPUT FLAGS
                              MANDATORY for all analytical commands when a session is active.
 
 INDEXING
-  build [path] [--precise] [--strict] [--tags=<tag[,tag...]>] [--memory-mode=low] [--max-memory=<size>]
+  build [path] [--precise] [--strict] [--tags=<tag[,tag...]>] [--exclude-dirs=<dir1,dir2>] [--memory-mode=low] [--max-memory=<size>]
                              Walk and parse a Go repository. Generates graph.json
                              and 9 targeted Markdown reports in .gograph/.
                              Adds .gograph/ to the Git repository root .gitignore
@@ -2974,7 +3009,7 @@ INDEXING
                              Inactive build-constrained files, cmd/go wildcard-excluded
                              directories, generated sources, go.mod ignore paths, AI
                              worktrees, and Git-ignored paths are automatically skipped.
-  stale [--tags=<tag[,tag...]>]
+  stale [--tags=<tag[,tag...]>] [--exclude-dirs=<dir1,dir2>]
                              Check selected files, build context, and content digests.
                              Exit 0 when current, 2 when stale, and 1 on error;
                              text and --json report persisted/current, complete/partial,
@@ -3379,7 +3414,7 @@ AGENT INTEGRATION
                              validates regular Go tool metadata and workspace members confined
                              beneath the workspace; dependency
                              resolution follows the user's Go environment.
-  mcp [path] [--persist-refresh] [--tags=<tag[,tag...]>] [--memory-mode=low] [--max-memory=<size>]
+  mcp [path] [--persist-refresh] [--tags=<tag[,tag...]>] [--exclude-dirs=<dir1,dir2>] [--memory-mode=low] [--max-memory=<size>]
                              Start a Model Context Protocol server over stdio.
                              Exposes graph queries as native tools for AI clients;
                              adopts newer precise graphs and reports every served graph as
@@ -3437,11 +3472,13 @@ OUTPUTS (after 'build')
 
 func printHelp() {
 	fmt.Print(helpText)
+	printExcludeDirsHelp("")
 	printListPaginationHelp("")
 	fmt.Println("\nCHANGE SELECTION\n  " + search.CurrentChangeSelectionContract)
 }
 
 func printCommandHelp(cmd string) {
+	defer printExcludeDirsHelp(cmd)
 	lines := strings.Split(helpText, "\n")
 	found := false
 	for _, line := range lines {
@@ -3594,13 +3631,21 @@ func runPath(args []string) int {
 // runStale checks whether graph.json is out of date relative to source files.
 func runStale(rawArgs []string) int {
 	var buildTags []string
+	var excludeDirs []string
 	for index := 0; index < len(rawArgs); index++ {
+		if handled, end, err := parseExcludeDirsOption(rawArgs, index, &excludeDirs); handled {
+			if err != nil {
+				return failCommandf("stale", "invalid exclusions: %v", err)
+			}
+			index = end
+			continue
+		}
 		handled, consumedThrough, err := parseBuildTagsOption(rawArgs, index, &buildTags)
 		if err != nil {
 			return failCommandf("stale", "invalid build tags: %v", err)
 		}
 		if !handled {
-			return failCommand("stale", "usage: gograph stale [--tags=integration]")
+			return failCommand("stale", "usage: gograph stale [--tags=integration] [--exclude-dirs=dir1,dir2]")
 		}
 		index = consumedThrough
 	}
@@ -3613,8 +3658,11 @@ func runStale(rawArgs []string) int {
 		return failCommand("stale", err.Error())
 	}
 	sr := search.Stale(g, graphRoot(g))
-	if len(normalizedTags) > 0 {
-		config, _ := resolveBuildConfigWithTags(graphRoot(g), normalizedTags)
+	if len(normalizedTags) > 0 || len(excludeDirs) > 0 {
+		if len(excludeDirs) == 0 && g.Build != nil && g.Build.Selection != nil {
+			excludeDirs = g.Build.Selection.ExcludeDirs
+		}
+		config, _ := resolveBuildConfigWithTags(graphRoot(g), normalizedTags, excludeDirs)
 		sr = search.StaleWithConfig(g, graphRoot(g), config)
 	}
 	state := graphstate.ManualPersisted(g, sr.IsStale)

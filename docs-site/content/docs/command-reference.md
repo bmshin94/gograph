@@ -51,8 +51,15 @@ their separately documented limits.
 ## Indexing & Core Commands
 
 ### build
+
+`--exclude-dirs=dir1,dir2` (also space-separated or repeated) omits literal
+repository-relative directory subtrees from both AST and precise targets,
+including tests. No globs, absolute paths, parent traversal, or root exclusion.
+The selection is recorded in `build.selection.exclude_dirs` and fingerprinted;
+rebuild without the flag to restore full selection. Included imports still must
+type-check, and source safety / Go metadata validation remains enforced.
 ```bash
-gograph build [path] [--precise] [--strict] [--tags=integration[,tag...]] [--memory-mode=low] [--max-memory=1GiB]
+gograph build [path] [--precise] [--strict] [--tags=integration[,tag...]] [--exclude-dirs=dir1,dir2] [--memory-mode=low] [--max-memory=1GiB]
 ```
 Walks and parses a Go repository. Generates the structured graph at `.gograph/graph.json` and nine targeted Markdown reports in `.gograph/`.
 Adds `.gograph/` to the Git repository root `.gitignore` when available; outside Git, falls back to the build target `.gitignore`.
@@ -120,8 +127,13 @@ cross-package method sets and dispatch targets remain correct.
     Gograph does not silently reduce precision when the target is too small.
 
 ### stale
+
+Recorded directory exclusions are used by default; `--exclude-dirs` checks an
+explicit alternative selection. Included source changes invalidate freshness;
+excluded source changes alone do not. Rebuild after modifying an unindexed
+dependency that included code imports.
 ```bash
-gograph stale [--tags=integration[,tag...]] [--json]
+gograph stale [--tags=integration[,tag...]] [--exclude-dirs=dir1,dir2] [--json]
 ```
 Compares the selected-file inventory, effective Go build context, and SHA-256 source-content digests with `.gograph/graph.json`. Modification times remain diagnostic fields only. It reports added, deleted, newly active, newly inactive, and byte-modified selected files plus build-context changes.
 Use the same `--tags` value supplied to `build` when checking an explicitly
@@ -893,6 +905,11 @@ inside a Git checkout does not widen this manifest's member-path boundary.
 
 ### workspace build
 
+Members can specify `exclude_dirs: [legacy, examples/broken]` in the manifest.
+Paths are relative to each member, and affect its fingerprint, refresh, and
+CLI/MCP status/query validation. Use matching flags for independently built
+member graphs; workspace refreshes apply the manifest list automatically.
+
 ```bash
 gograph workspace build [path] [--refresh-members] [--tags=integration[,tag...]] [--memory-mode=low] [--max-memory=1GiB] [--json]
 ```
@@ -1075,8 +1092,13 @@ commands. The MCP counterpart, `gograph_capabilities`, also includes a top-level
 the analysis instrument. Useful for bootstrapping context in an LLM system prompt.
 
 ### mcp
+
+Use the same `--exclude-dirs` selection as the repository build. Startup,
+refreshes, and baselines retain it; capabilities exposes
+`analysis_build_context.exclude_dirs`. This is a startup option, not a per-tool
+argument. Restart the server after changing it.
 ```bash
-gograph mcp [path] [--persist-refresh] [--tags=integration[,tag...]] [--memory-mode=low] [--max-memory=1GiB]
+gograph mcp [path] [--persist-refresh] [--tags=integration[,tag...]] [--exclude-dirs=dir1,dir2] [--memory-mode=low] [--max-memory=1GiB]
 ```
 Starts a Model Context Protocol (MCP) server over `stdio`, exposing gograph's
 query, analysis, and workflow capabilities as native tools for integration with

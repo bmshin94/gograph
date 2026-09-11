@@ -82,6 +82,12 @@ yet identify which of several configured services owns a handler.
 
 ## Build and mutation boundary
 
+Each repository may declare `exclude_dirs: [legacy, examples/broken]`. These are
+literal member-relative subtrees omitted from AST and precise targets, including
+tests. CLI/MCP validation and workspace refreshes honor the same list; changing it
+invalidates the overlay's input identity. Imported dependencies and source safety
+checks remain enforced. See [directory exclusions](build-selection.md).
+
 ```bash
 # Reads member graphs and writes only .gograph/workspace.json.
 gograph workspace build

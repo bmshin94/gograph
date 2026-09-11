@@ -87,6 +87,7 @@ MANIFEST
     - id: api
       path: services/api
       precision: precise
+      exclude_dirs: [legacy, examples/broken]
       services:
         - id: api-service
           http:
@@ -106,6 +107,10 @@ MANIFEST
   resolve only inside the selected scope; request construction is possible,
   not dispatch proof. Query returns http_unresolved diagnostics; status reports
   verified per-scope counts. Unresolved records are never traversable edges.
+
+  exclude_dirs contains literal member-relative directory subtrees to omit
+  from AST/precise targets. It is fingerprinted and used by member refreshes
+  and CLI/MCP validation. Imported dependencies and safety checks still apply.
 
   See docs/workspaces.md in the source tree, or:
   https://gograph.identuum.ai/docs/command-reference/#federated-workspaces
@@ -192,7 +197,7 @@ func runWorkspaceBuild(args []string) int {
 				return writeWorkspaceBuildFailure(result, fmt.Sprintf("refresh repository %q: %v", config.ID, rootErr))
 			}
 			controller.Reclaim()
-			if err := refreshWorkspaceMember(memberRoot, config.Precision == "precise", memoryPolicy, buildTags); err != nil {
+			if err := refreshWorkspaceMember(memberRoot, config.Precision == "precise", memoryPolicy, buildTags, config.ExcludeDirs); err != nil {
 				attempt.Error = err.Error()
 				attempt.AfterFingerprint = graphArtifactFingerprint(memberRoot)
 				result.RefreshFailed = append(result.RefreshFailed, attempt)
@@ -256,8 +261,8 @@ func writeWorkspaceBuildFailure(result workspaceBuildResult, message string) int
 	return 1
 }
 
-func refreshWorkspaceMember(root string, preciseMode bool, memoryPolicy memorylimit.Policy, buildTags []string) error {
-	buildConfig, configErr := resolveBuildConfigWithTags(root, buildTags)
+func refreshWorkspaceMember(root string, preciseMode bool, memoryPolicy memorylimit.Policy, buildTags []string, exclusions ...[]string) error {
+	buildConfig, configErr := resolveBuildConfigWithTags(root, buildTags, exclusions...)
 	previous, _ := loadGraph(root)
 	g, err := buildGraphWithConfig(root, buildConfig, configErr, previous)
 	if err != nil {

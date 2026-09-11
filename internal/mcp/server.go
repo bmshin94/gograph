@@ -183,6 +183,7 @@ type ServerOptions struct {
 	RequestedMaxMemoryBytes int64
 	EffectiveMaxMemoryBytes int64
 	RequestedBuildTags      []string
+	ExcludeDirs             []string
 	EffectiveBuildTags      []string
 	GraphState              func() graphstate.State
 	// RefreshContext supersedes the legacy rebuild callback when provided.
@@ -266,11 +267,8 @@ func attachGraphState(result *mcp.CallToolResult, state graphstate.State) {
 }
 
 func inspectedGraphState(ctx context.Context, g *graph.Graph, source graphstate.Source, options ServerOptions) graphstate.State {
-	stale := search.Stale(g, graphRoot(g))
-	if len(options.RequestedBuildTags) > 0 {
-		config, _ := buildctx.ResolveOrDefaultWithOptions(ctx, graphRoot(g), buildctx.ResolveOptions{BuildTags: options.RequestedBuildTags})
-		stale = search.StaleWithConfig(g, graphRoot(g), config)
-	}
+	config, _ := buildctx.ResolveOrDefaultWithOptions(ctx, graphRoot(g), buildctx.ResolveOptions{BuildTags: options.RequestedBuildTags, ExcludeDirs: options.ExcludeDirs})
+	stale := search.StaleWithConfig(g, graphRoot(g), config)
 	persistenceOutcome := "not_requested"
 	if source == graphstate.SourcePersisted {
 		persistenceOutcome = "persisted"
@@ -577,8 +575,10 @@ func NewServer(
 			"analysis_build_context": map[string]any{
 				"requested_build_tags": append([]string{}, selectedOptions.RequestedBuildTags...),
 				"effective_build_tags": append([]string{}, selectedOptions.EffectiveBuildTags...),
+				"exclude_dirs":         append([]string{}, selectedOptions.ExcludeDirs...),
+				"exclusion_semantics":  "literal repository-relative directory subtrees excluded from AST and precise targets; imported dependencies and source safety checks remain enforced",
 				"selection_semantics":  "explicit --tags replaces GOFLAGS -tags; without --tags, cmd/go resolves inherited GOFLAGS normally",
-				"refresh_semantics":    "all MCP in-memory and persisted refreshes retain this startup build-tag selection",
+				"refresh_semantics":    "all MCP in-memory and persisted refreshes retain this startup build-tag and directory-exclusion selection",
 				"artifact_semantics":   "a persisted graph from a different effective GOWORK or build selection is stale and is not silently served",
 			},
 			"mermaid": map[string]any{
@@ -2202,11 +2202,8 @@ func initNewTools(
 	)
 	addTool(staleTool, func(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		base, source := persistedGraphWithSource(indexedGraph)
-		sr := search.Stale(base, graphRoot(base))
-		if len(selectedOptions.RequestedBuildTags) > 0 {
-			config, _ := buildctx.ResolveOrDefaultWithOptions(ctx, graphRoot(base), buildctx.ResolveOptions{BuildTags: selectedOptions.RequestedBuildTags})
-			sr = search.StaleWithConfig(base, graphRoot(base), config)
-		}
+		config, _ := buildctx.ResolveOrDefaultWithOptions(ctx, graphRoot(base), buildctx.ResolveOptions{BuildTags: selectedOptions.RequestedBuildTags, ExcludeDirs: selectedOptions.ExcludeDirs})
+		sr := search.StaleWithConfig(base, graphRoot(base), config)
 		data, err := json.MarshalIndent(sr, "", "  ")
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil

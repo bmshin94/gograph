@@ -54,6 +54,9 @@ gograph build . --precise --memory-mode=low --max-memory=1GiB
 # Optional: include integration-tagged files and tests in this graph
 gograph build . --precise --tags=integration
 
+# Optional: omit unrelated broken package directories
+gograph build . --precise --strict --exclude-dirs=legacy,examples/broken
+
 # Start with repository-wide results that require no guessed symbol
 gograph summary
 gograph hotspot --top 5
@@ -129,6 +132,10 @@ Precise fallback continues to exit zero by default for compatibility and is
 recorded in graph metadata. Add `--strict` with `--precise` when fallback must
 fail CI; Gograph still publishes or retains the diagnostic artifact before
 returning non-zero.
+
+For precise builds blocked by unrelated directories, see
+[directory exclusions](docs/build-selection.md). Use the same `--exclude-dirs`
+selection on `gograph mcp` startup; imported dependencies must still type-check.
 
 ## Machine-readable structural validation
 

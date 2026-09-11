@@ -115,6 +115,14 @@ gograph build . --precise --strict
 gograph build . --precise --tags=integration
 ```
 
+For unrelated broken directories, use
+`gograph build . --precise --strict --exclude-dirs=legacy,examples/broken`.
+Exclusions are literal repository-relative subtrees, not glob patterns. Start MCP
+with the same `--exclude-dirs` flag so automatic refreshes keep the selection.
+Imported dependencies still must compile and all source-safety checks remain.
+Rebuild without exclusions to restore full coverage; excluded code is not part
+of the selected graph.
+
 `--tags` accepts a validated comma-separated list and selects one graph build
 context; it does not union multiple builds. An explicit value replaces
 `GOFLAGS -tags`, while omitting it preserves the existing inherited behavior.

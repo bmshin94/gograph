@@ -60,6 +60,11 @@ pagination, native CLI/MCP payloads, cancellation, cache boundaries, and explici
 incomplete-change handling. Follow continuation cursors for a complete census;
 never combine pages after a graph change invalidates the cursor.
 
+To exclude unrelated broken directories, register a custom startup command such
+as `gograph mcp /path/to/project --exclude-dirs=legacy,examples/broken`. The fixed
+MCPB launch has no exclusion prompt. Match the repository build's selection and
+restart the server; see [directory exclusions](build-selection.md).
+
 Select a different project directory for each repository-specific server
 configuration. gograph anchors its graph, source refresh, configuration, Git
 operations, and local session metadata to that analyzed project.

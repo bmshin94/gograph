@@ -35,6 +35,12 @@ Do NOT invoke for non-Go work. The skill is Go-scoped.
 
 ## Prerequisite
 
+For unrelated broken packages, use `gograph build . --precise --strict --exclude-dirs=legacy,examples/broken`. Pass the same
+`--exclude-dirs` to MCP startup and verify `analysis_build_context.exclude_dirs`
+in capabilities. Paths are literal root-relative subtrees; imported dependencies
+still must compile. Excluded code is outside the census. Workspace members use
+`exclude_dirs` in their manifest. See `docs/build-selection.md`.
+
 The gograph binary must be installed and on `$PATH`:
 
 ```bash

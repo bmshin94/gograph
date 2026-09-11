@@ -417,6 +417,9 @@ func WalkWithConfig(root string, config buildctx.Config) (paths []string, errs [
 // source-selection input observed during the walk, including nested module
 // boundaries and ignore directives.
 func WalkWithConfigAndFingerprint(root string, config buildctx.Config) (paths []string, fingerprint string, errs []error) {
+	if err := buildctx.ValidateExcludeDirs(root, config.ExcludeDirs()); err != nil {
+		return nil, "", []error{err}
+	}
 	absRoot, err := filepath.Abs(root)
 	if err != nil {
 		absRoot = root
@@ -436,6 +439,14 @@ func WalkWithConfigAndFingerprint(root string, config buildctx.Config) (paths []
 		}
 	}
 	err = filepath.Walk(walkRoot, func(path string, info os.FileInfo, err error) error {
+		// Apply explicit selection before inspecting package metadata or errors
+		// within excluded trees. Never follow links to implement exclusions.
+		if rel, relErr := filepath.Rel(root, path); relErr == nil && config.Excludes(filepath.ToSlash(rel)) {
+			if info != nil && info.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
 		if err != nil {
 			errs = append(errs, err)
 			return nil // keep walking

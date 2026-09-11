@@ -34,6 +34,7 @@ type ManifestDefaults struct {
 }
 
 type RepositoryConfig struct {
+	ExcludeDirs []string           `yaml:"exclude_dirs,omitempty" json:"exclude_dirs,omitempty"`
 	ID          string             `yaml:"id" json:"id"`
 	Path        string             `yaml:"path" json:"path"`
 	Precision   string             `yaml:"precision,omitempty" json:"precision,omitempty"`

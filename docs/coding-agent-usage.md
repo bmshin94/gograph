@@ -124,7 +124,7 @@ gograph doc <pkg[.Symbol]>       # go doc wrapper: signature + doc comment for a
                                  # Use when following call chains outside the project.
                                  # Examples: gograph doc fmt.Errorf   gograph doc io.Reader
                                  #           gograph doc net/http.HandleFunc  [--json]
-gograph mcp [path] [--persist-refresh] [--tags=integration[,tag...]] [--memory-mode=low] [--max-memory=1GiB]
+gograph mcp [path] [--persist-refresh] [--tags=integration[,tag...]] [--exclude-dirs=dir1,dir2] [--memory-mode=low] [--max-memory=1GiB]
                                  # stdio MCP server; optional successful-refresh publication
                                  # memory options match CLI build/refresh semantics; use the
                                  # same GOWORK/GOFLAGS/tags as the persisted graph
@@ -141,6 +141,14 @@ gograph snapshot drop <name>     # delete a named snapshot
 ```
 
 ## Claude Code / Claude Desktop Integration
+
+For unrelated packages that break precise loading, build with
+`--exclude-dirs=legacy,examples/broken` and pass the same option at MCP startup.
+The shared selection excludes literal root-relative subtrees from AST and
+precise targets; it does not hide imported dependency errors or bypass safety
+checks. Capabilities reports `analysis_build_context.exclude_dirs`, and refreshes
+retain it. See [directory exclusions](build-selection.md), including the distinction
+between a selected graph and full-repository machine validation.
 
 Running `gograph add-claude-plugin` performs three installation steps in one command:
 
