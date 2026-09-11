@@ -87,7 +87,16 @@ func cloneForPreciseEnrichment(g *graph.Graph) graph.Graph {
 
 func enrichWithConfig(absRoot string, g *graph.Graph, config buildctx.Config, options Options) error {
 	analysisRoot := preciseAnalysisRoot(absRoot, config)
-	if err := enrichProductionWithConfig(options.Context, absRoot, analysisRoot, g, config); err != nil {
+	links, err := scanner.ExcludedDirectoryLinks(absRoot, config.ExcludeDirs())
+	if err != nil {
+		return fmt.Errorf("refusing precise analysis of unsafe repository or Go tool input: %w", err)
+	}
+	flags, cleanup, err := sourceLinkOverlay(options.Context, analysisRoot, config, links)
+	if err != nil {
+		return fmt.Errorf("prepare precise source policy: %w", err)
+	}
+	defer cleanup()
+	if err := enrichProductionWithConfig(options.Context, absRoot, analysisRoot, g, config, flags, links); err != nil {
 		return err
 	}
 	// The production package/type/SSA graph is now out of scope. In low-memory
@@ -104,7 +113,7 @@ func enrichWithConfig(absRoot string, g *graph.Graph, config buildctx.Config, op
 	if err := options.Context.Err(); err != nil {
 		return err
 	}
-	testResolution, testResolutionErr := enrichTypedTestCalls(options.Context, analysisRoot, g, config)
+	testResolution, testResolutionErr := enrichTypedTestCalls(options.Context, analysisRoot, g, config, flags)
 	if err := options.Context.Err(); err != nil {
 		return err
 	}
@@ -114,7 +123,7 @@ func enrichWithConfig(absRoot string, g *graph.Graph, config buildctx.Config, op
 			g.Build.Warnings = append(g.Build.Warnings, "typed test call resolution incomplete: "+testResolutionErr.Error())
 		}
 	}
-	if err := scanner.ValidateNoSourceLinks(absRoot); err != nil {
+	if err := scanner.ValidateMaskedSourceLinks(absRoot, links); err != nil {
 		return fmt.Errorf("repository source became unsafe during precise test analysis: %w", err)
 	}
 	return nil
@@ -130,11 +139,11 @@ func preciseAnalysisRoot(absRoot string, config buildctx.Config) string {
 	return analysisRoot
 }
 
-func enrichProductionWithConfig(ctx context.Context, absRoot, analysisRoot string, g *graph.Graph, config buildctx.Config) error {
+func enrichProductionWithConfig(ctx context.Context, absRoot, analysisRoot string, g *graph.Graph, config buildctx.Config, flags, links []string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if err := scanner.ValidateToolchainSourceInputs(absRoot); err != nil {
+	if err := scanner.ValidateMaskedSourceLinks(absRoot, links); err != nil {
 		return fmt.Errorf("refusing precise analysis of unsafe repository or Go tool input: %w", err)
 	}
 	cfg := &packages.Config{
@@ -143,7 +152,7 @@ func enrichProductionWithConfig(ctx context.Context, absRoot, analysisRoot strin
 			packages.NeedImports | packages.NeedDeps | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedSyntax,
 		Dir:        analysisRoot,
 		Env:        config.Environment(),
-		BuildFlags: config.Flags(),
+		BuildFlags: flags,
 	}
 
 	patterns, err := packagePatterns(g, config)
@@ -535,7 +544,7 @@ func enrichProductionWithConfig(ctx context.Context, absRoot, analysisRoot strin
 	// 3b. Indirect mutations through mutating-method calls.
 	indirect := collectIndirectMutations(prog, analysisRoot, userMutators)
 	g.Mutations = append(g.Mutations, indirect...)
-	if err := scanner.ValidateNoSourceLinks(absRoot); err != nil {
+	if err := scanner.ValidateMaskedSourceLinks(absRoot, links); err != nil {
 		return fmt.Errorf("repository source became unsafe during precise analysis: %w", err)
 	}
 	if err := validateLoadedSourcePaths(analysisRoot, initial); err != nil {

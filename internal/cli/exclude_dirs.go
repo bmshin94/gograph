@@ -49,6 +49,10 @@ DIRECTORY EXCLUSIONS
   remain selected; names match from the analysis root, not at every depth.
   Applies to AST and precise targets, including tests. Imported dependencies
   still must type-check; source safety and Go metadata checks remain enforced.
+  Directory symlinks beneath excluded real directories are masked from precise
+  Go loading (e.g. --exclude-dirs=.claude/skills); targets are not followed.
+  Linked Go inputs/metadata remain errors. An existing Go -overlay conflicts
+  with this masking. The standalone doc operation keeps its strict preflight.
   Build selection/fingerprints record exclusions. Pass the same flag to mcp
   to retain them across refreshes. Stale uses recorded exclusions by default.
   Rebuild without the flag to restore full selection. Workspace members use

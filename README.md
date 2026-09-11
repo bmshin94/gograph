@@ -136,6 +136,10 @@ returning non-zero.
 For precise builds blocked by unrelated directories, see
 [directory exclusions](docs/build-selection.md). Use the same `--exclude-dirs`
 selection on `gograph mcp` startup; imported dependencies must still type-check.
+For symlinked skills, v1.7.2 supports `--exclude-dirs=.claude/skills`: directory
+links beneath that real directory are hidden from Go loading, without following
+their targets. Linked Go inputs and metadata remain protected. See the
+[Codex MCP setup guide](docs/codex-integration.md) for registration and verification.
 
 ## Machine-readable structural validation
 

@@ -40,6 +40,11 @@ For unrelated broken packages, use `gograph build . --precise --strict --exclude
 in capabilities. Paths are literal root-relative subtrees; imported dependencies
 still must compile. Excluded code is outside the census. Workspace members use
 `exclude_dirs` in their manifest. See `docs/build-selection.md`.
+For symlinked skills in v1.7.2+, exclude their real parent, for example
+`--exclude-dirs=.claude/skills`. Precise production/test loading masks directory
+links beneath it without following targets. Linked Go inputs/metadata remain
+errors, and an existing Go overlay conflicts with masking. `doc` retains its
+independent strict preflight. Codex setup: `docs/codex-integration.md`.
 
 The gograph binary must be installed and on `$PATH`:
 

@@ -64,6 +64,9 @@ To exclude unrelated broken directories, register a custom startup command such
 as `gograph mcp /path/to/project --exclude-dirs=legacy,examples/broken`. The fixed
 MCPB launch has no exclusion prompt. Match the repository build's selection and
 restart the server; see [directory exclusions](build-selection.md).
+For symlinked skill directories, v1.7.2+ supports
+`--exclude-dirs=.claude/skills` through a temporary Go deletion overlay.
+For Codex, follow [Codex MCP setup](codex-integration.md).
 
 Select a different project directory for each repository-specific server
 configuration. gograph anchors its graph, source refresh, configuration, Git

@@ -1,5 +1,19 @@
 # Release Notes
 
+## v1.7.2 — 2026-09-11
+
+- Fixed precise builds blocked by directory symlinks beneath explicitly excluded
+  directories, including `.claude/skills` links created by skill installers.
+  Production and test loading mask the links with a temporary deletion overlay;
+  targets are not followed, and imports through them cannot supply Go code.
+- Preserved rejection of linked Go build inputs and module/workspace metadata.
+  An existing user Go overlay is rejected when masking is needed, rather than
+  silently replaced. The independent `doc` preflight remains strict.
+- Added actual CLI/MCP build-and-refresh regressions, external-target and import
+  boundary tests, updated help/capabilities, and a Codex MCP setup guide.
+- Restart existing MCP servers after upgrading and pass the same
+  `--exclude-dirs=.claude/skills` selection used for the repository build.
+
 ## v1.7.1 — 2026-09-11
 
 - Added `build`, `mcp`, and `stale --exclude-dirs=dir1,dir2` for literal

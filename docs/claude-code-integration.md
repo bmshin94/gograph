@@ -205,6 +205,10 @@ When unrelated directories block precise builds, use
 `gograph build . --precise --exclude-dirs=legacy,examples/broken` and add the same
 flag to the registered `gograph mcp` startup command. Restart the server afterward.
 See [directory exclusions](build-selection.md) for selection and dependency limits.
+For symlinked skills, v1.7.2+ supports `--exclude-dirs=.claude/skills`: the
+excluded directory must be real, and its directory links are masked during
+precise loading without following their targets. Linked Go inputs and metadata
+remain errors. Restart the MCP server with the matching exclusion.
 
 Common row-list tools now return bounded `gograph.results.v1` pages with
 `total`, `returned`, `truncated`, and `next_cursor`. Default limit is 100,

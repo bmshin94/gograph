@@ -25,6 +25,36 @@ hide its type errors. Exclusions do not disable source-path, symlink, module,
 workspace, or other Go-input safety checks. Invalid required `go.mod` / `go.work`
 metadata must still be corrected.
 
+## Symlinked skills and tooling directories
+
+Starting with v1.7.2, directory symlinks **beneath an explicitly excluded real
+directory** no longer block precise builds or MCP refreshes. For example:
+
+```bash
+gograph build . --precise --strict --exclude-dirs=.claude/skills
+gograph mcp /absolute/path/to/project --exclude-dirs=.claude/skills
+```
+
+This supports `.claude/skills/example -> ../../.agents/skills/example` and
+links to external skill directories. Gograph does not traverse those targets;
+a temporary Go deletion overlay makes the links absent during both production
+and test package loading. A direct or transitive import through such a link
+cannot supply Go code. Ordinary real excluded packages can still be imported
+and must compile as described above.
+
+The exclusion itself must name a real directory: exclude the parent of a link,
+not the link itself. Linked Go/C/assembly files and Go metadata still fail
+safety checks, including inside exclusions. Links outside the selected
+exclusions still block precision. A separately configured Go `-overlay` in
+`GOFLAGS` or `GOENV` cannot be combined with this masking and is rejected with
+guidance, not silently overridden. No target links are removed or rewritten.
+The standalone CLI/MCP `doc` operation keeps its independent strict preflight;
+it does not apply build exclusions or this temporary overlay.
+
+For Codex registration, see [Codex MCP setup](codex-integration.md).
+
+## Freshness and refresh
+
 The normalized list is stored in `build.selection.exclude_dirs` and bound into
 both build-context and source fingerprints. Completeness describes the selected
 code, not the excluded trees. Rebuild without the flag to restore the full

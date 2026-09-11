@@ -14,6 +14,9 @@ runtime proof.
 
 ## Text search, gopls, and gograph have different jobs
 
+For Codex, see the [Codex MCP setup guide](https://github.com/ozgurcd/gograph/blob/main/docs/codex-integration.md),
+including matching build/startup exclusions for symlinked skills directories.
+
 `rg`, `grep`, and `find` are appropriate for literal text, documentation,
 configuration, generated content, and non-Go files. Text matching alone cannot
 resolve Go interface satisfaction or distinguish a call expression from a

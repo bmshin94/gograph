@@ -419,7 +419,11 @@ Repository source and persisted-index reads are confined beneath the selected
 authority: linked directories and linked or special recognized Go build inputs are excluded, linked or
 non-regular go.mod/go.sum/go.work/go.work.sum/vendor/modules.txt metadata is
 rejected before toolchain use. Unrelated regular-file or dangling links with
-non-Go extensions are not cmd/go inputs and do not block precision. Applicable
+non-Go extensions are not cmd/go inputs and do not block precision. Excluded
+directory symlinks beneath explicit --exclude-dirs are masked from precise Go
+loading without following their targets. Linked Go inputs/metadata remain errors;
+an existing Go -overlay conflicts with this masking. See docs/build-selection.md.
+Applicable
 go.work members may be sibling modules beneath the nearest real Git checkout;
 without that boundary they remain confined beneath the workspace directory.
 Every member directory and metadata file is validated before toolchain use.

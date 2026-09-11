@@ -31,7 +31,7 @@ type testCallSite struct {
 // fallback. Successful packages enrich exact and bounded-possible test call
 // targets; omitted or ill-typed tests leave their parser edges unresolved and
 // produce typed_partial capability metadata.
-func enrichTypedTestCalls(ctx context.Context, absRoot string, g *graph.Graph, config buildctx.Config) (graph.TestCallResolutionMode, error) {
+func enrichTypedTestCalls(ctx context.Context, absRoot string, g *graph.Graph, config buildctx.Config, flags []string) (graph.TestCallResolutionMode, error) {
 	if err := ctx.Err(); err != nil {
 		return graph.TestCallResolutionPartial, err
 	}
@@ -45,7 +45,7 @@ func enrichTypedTestCalls(ctx context.Context, absRoot string, g *graph.Graph, c
 			packages.NeedTypesInfo | packages.NeedSyntax,
 		Dir:        absRoot,
 		Env:        config.Environment(),
-		BuildFlags: config.Flags(),
+		BuildFlags: flags,
 		Tests:      true,
 	}
 	patterns, err := packagePatterns(g, config)

@@ -143,9 +143,26 @@ func TestExcludeDirsActualMCPRefreshParity(t *testing.T) {
 	t.Run("omitted startup exclusions", func(t *testing.T) { testExcludeDirsActualMCP(t, false) })
 }
 
-func testExcludeDirsActualMCP(t *testing.T, passExclusions bool) {
+func TestExcludedSkillsDirectorySymlinkCLIAndMCP(t *testing.T) {
+	testExcludeDirsActualMCP(t, true, true)
+}
+
+func testExcludeDirsActualMCP(t *testing.T, passExclusions bool, skills ...bool) {
 	root := exclusionFixture(t)
-	if rc := runBuild([]string{root, "--precise", "--strict", "--exclude-dirs=broken"}); rc != 0 {
+	exclusions := "broken"
+	expectedExclusions := "[broken]"
+	if len(skills) != 0 && skills[0] {
+		writeExclusionFile(t, root, ".agents/skills/example/SKILL.md", "# Example skill\n")
+		if err := os.MkdirAll(filepath.Join(root, ".claude/skills"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink("../../.agents/skills/example", filepath.Join(root, ".claude/skills/example")); err != nil {
+			t.Skipf("symlinks unavailable: %v", err)
+		}
+		exclusions = ".claude/skills,broken"
+		expectedExclusions = "[.claude/skills broken]"
+	}
+	if rc := runBuild([]string{root, "--precise", "--strict", "--exclude-dirs=" + exclusions}); rc != 0 {
 		t.Fatal("build failed")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
@@ -162,7 +179,7 @@ func testExcludeDirsActualMCP(t *testing.T, passExclusions bool) {
 			t.Fatalf("%s help missing exclusion contract: %v\n%s", verb, err, output)
 		}
 	}
-	build := exec.CommandContext(ctx, binary, "build", root, "--precise", "--strict", "--exclude-dirs=broken")
+	build := exec.CommandContext(ctx, binary, "build", root, "--precise", "--strict", "--exclude-dirs="+exclusions)
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("actual CLI build failed: %v\n%s", err, output)
 	}
@@ -172,7 +189,7 @@ func testExcludeDirsActualMCP(t *testing.T, passExclusions bool) {
 	}
 	args := []string{"mcp", root}
 	if passExclusions {
-		args = append(args, "--exclude-dirs=broken")
+		args = append(args, "--exclude-dirs="+exclusions)
 	}
 	cmd := exec.CommandContext(ctx, binary, args...)
 	in, err := cmd.StdinPipe()
@@ -218,6 +235,11 @@ func testExcludeDirsActualMCP(t *testing.T, passExclusions bool) {
 		result := request("tools/call", map[string]any{"name": name, "arguments": arguments})
 		var payload struct {
 			IsError bool `json:"isError"`
+			Meta    struct {
+				GraphState struct {
+					Precision string `json:"precision"`
+				} `json:"gograph_graph_state"`
+			} `json:"_meta"`
 			Content []struct {
 				Text string `json:"text"`
 			} `json:"content"`
@@ -228,6 +250,9 @@ func testExcludeDirsActualMCP(t *testing.T, passExclusions bool) {
 		if payload.IsError || len(payload.Content) == 0 {
 			t.Fatalf("tool failed: %s", result)
 		}
+		if passExclusions && name == "gograph_query" && payload.Meta.GraphState.Precision != "precise" {
+			t.Fatalf("query/refresh lost precision: %s", result)
+		}
 		return payload.Content[0].Text
 	}
 	capabilities := call("gograph_capabilities", map[string]any{})
@@ -236,6 +261,9 @@ func testExcludeDirsActualMCP(t *testing.T, passExclusions bool) {
 		t.Fatal(err)
 	}
 	selection := caps["analysis_build_context"].(map[string]any)
+	if !strings.Contains(fmt.Sprint(selection["excluded_symlinks"]), "deletion overlay") {
+		t.Fatalf("missing symlink masking contract: %v", selection)
+	}
 	if !passExclusions {
 		if fmt.Sprint(selection["exclude_dirs"]) != "[]" {
 			t.Fatalf("silently inherited exclusions: %v", selection)
@@ -249,8 +277,28 @@ func testExcludeDirsActualMCP(t *testing.T, passExclusions bool) {
 		}
 		return
 	}
-	if fmt.Sprint(selection["exclude_dirs"]) != "[broken]" {
+	if fmt.Sprint(selection["exclude_dirs"]) != expectedExclusions {
 		t.Fatalf("wrong MCP exclusions: %v", selection)
+	}
+	queryCommand := exec.CommandContext(ctx, binary, "query", "Target", "--json")
+	queryCommand.Dir = root
+	queryOutput, err := queryCommand.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cliPage, mcpPage map[string]any
+	if err := json.Unmarshal(queryOutput, &cliPage); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal([]byte(call("gograph_query", map[string]any{"term": "Target"})), &mcpPage); err != nil {
+		t.Fatal(err)
+	}
+	cliRows := cliPage["results"]
+	if page, ok := cliRows.(map[string]any); ok {
+		cliRows = page["results"]
+	}
+	if !reflect.DeepEqual(cliRows, mcpPage["results"]) {
+		t.Fatalf("CLI/MCP rows differ: %v != %v", cliRows, mcpPage["results"])
 	}
 	if result := call("gograph_query", map[string]any{"term": "Broken"}); strings.Contains(result, `"name": "Broken"`) {
 		t.Fatalf("excluded symbol leaked: %s", result)

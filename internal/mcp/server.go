@@ -577,6 +577,7 @@ func NewServer(
 				"effective_build_tags": append([]string{}, selectedOptions.EffectiveBuildTags...),
 				"exclude_dirs":         append([]string{}, selectedOptions.ExcludeDirs...),
 				"exclusion_semantics":  "literal repository-relative directory subtrees excluded from AST and precise targets; imported dependencies and source safety checks remain enforced",
+				"excluded_symlinks":    "directory symlinks beneath excluded real directories are masked from precise production/test loading with a temporary deletion overlay; linked Go inputs and metadata remain errors; an existing Go overlay conflicts; standalone doc keeps its strict preflight",
 				"selection_semantics":  "explicit --tags replaces GOFLAGS -tags; without --tags, cmd/go resolves inherited GOFLAGS normally",
 				"refresh_semantics":    "all MCP in-memory and persisted refreshes retain this startup build-tag and directory-exclusion selection",
 				"artifact_semantics":   "a persisted graph from a different effective GOWORK or build selection is stale and is not silently served",

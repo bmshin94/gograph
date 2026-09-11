@@ -1,5 +1,10 @@
 # gograph for Coding Agents
 
+For Codex registration and verification, see [Codex MCP setup](codex-integration.md).
+For `.claude/skills` directory symlinks, use v1.7.2+ with matching
+`--exclude-dirs=.claude/skills` on build and MCP startup; see
+[the masking and security boundary](build-selection.md#symlinked-skills-and-tooling-directories).
+
 How `gograph` helps coding agents (Claude Code, Cursor, Copilot, Gemini, Codeium, Antigravity, etc.) work effectively in Go repositories.
 
 ## The problem gograph solves

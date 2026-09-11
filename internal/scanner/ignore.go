@@ -118,6 +118,10 @@ func ShouldIgnoreFile(path string) (bool, error) {
 // own metadata directories are excluded. An explicitly symlinked repository
 // root remains supported.
 func ValidateNoSourceLinks(root string) error {
+	return validateNoSourceLinks(root, nil)
+}
+
+func validateNoSourceLinks(root string, maskDirectoryLink func(string) bool) error {
 	absRoot, err := filepath.Abs(root)
 	if err != nil {
 		return fmt.Errorf("resolve source validation root: %w", err)
@@ -156,6 +160,9 @@ func ValidateNoSourceLinks(root string) error {
 				return fmt.Errorf("inspect linked repository input %s: %w", path, statErr)
 			}
 			if isGoBuildInput(info.Name()) || isGoToolMetadata(path) || statErr == nil && !target.Mode().IsRegular() {
+				if !isGoBuildInput(info.Name()) && !isGoToolMetadata(path) && statErr == nil && target.IsDir() && maskDirectoryLink != nil && maskDirectoryLink(path) {
+					return nil
+				}
 				return &UnsafeSourceFileError{Path: path, Mode: info.Mode()}
 			}
 			return nil

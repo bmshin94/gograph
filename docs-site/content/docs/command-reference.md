@@ -58,6 +58,11 @@ including tests. No globs, absolute paths, parent traversal, or root exclusion.
 The selection is recorded in `build.selection.exclude_dirs` and fingerprinted;
 rebuild without the flag to restore full selection. Included imports still must
 type-check, and source safety / Go metadata validation remains enforced.
+Since v1.7.2, `--exclude-dirs=.claude/skills` also masks directory symlinks
+beneath that real directory during precise production/test loading. Targets
+are not traversed and cannot provide imported Go code. Linked Go inputs and
+metadata remain errors; an existing user Go overlay cannot be combined with
+this masking. Pass the same exclusion to MCP startup and restart the server.
 ```bash
 gograph build [path] [--precise] [--strict] [--tags=integration[,tag...]] [--exclude-dirs=dir1,dir2] [--memory-mode=low] [--max-memory=1GiB]
 ```
