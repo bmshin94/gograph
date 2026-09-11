@@ -512,3 +512,7 @@ Recorded the owner-approved eight-improvement contract in query-contracts.md: id
 ### 2026-09-06 — v1.7.0 publication and installed acceptance
 
 Published immutable v1.7.0 (tag 9ba68b6) with all eight query/workspace improvements and CLI/MCP/help documentation. Release34064579154, CI and docs passed; all 14 GitHub assets and Registry hashes verified. Go1.27.0/1.27.1 bundle mismatch was reproduced and fixed in the workflow (ec75c77) without moving the tag or bypassing verification. Homebrew tap a6bad5d retains postflight_steps; installed CLI/new MCP report1.7.0, brew doctor is clean, and their 259-route/3-page real census matches exactly with cursors below the cap and unchanged persisted graph. See mcp-registry.md for evidence and query-contracts.md for semantic boundaries.
+
+## [2026-09-11] maintenance | v1.7.1 publication and installed acceptance
+
+Published immutable v1.7.1 (7c5e4b0; feature 2eb2d87) with fingerprinted directory exclusions and CLI/MCP/workspace documentation. Release 34582231376, CI 34582231661, and docs 34582231679 passed; all 14 GitHub assets and active Registry hashes match. Homebrew tap 8a91b2b retains postflight_steps and installed version 1.7.1. Actual installed strict-build and fresh 68-tool MCP acceptance passed with identical query rows and unchanged graph bytes using the canonical fixture root. The /tmp versus /private/tmp freshness mismatch and unrelated Apple tooling update warnings are recorded in mcp-registry.md; existing MCP processes still require restart.

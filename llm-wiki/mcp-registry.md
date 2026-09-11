@@ -2,7 +2,7 @@
 title: Official MCP Registry Distribution
 type: decision
 status: current
-updated: 2026-09-06
+updated: 2026-09-11
 sources:
   - SRC-20260712-mcp-registry-spec
   - SRC-20260712-mcpb-spec
@@ -13,13 +13,17 @@ sources:
 
 ## Live publication
 
-The official Registry entry `io.github.ozgurcd/gograph` includes active immutable version `1.7.0`. Its exact API record is `https://registry.modelcontextprotocol.io/v0.1/servers/io.github.ozgurcd%2Fgograph/versions/1.7.0`. GitHub release `v1.7.0`, published 2026-09-06, is at `https://github.com/ozgurcd/gograph/releases/tag/v1.7.0`. The checked-in `server.json`, local annotated tag, GitHub release, and Registry package hashes agree on 1.7.0; the tag dereferences to `9ba68b68fe1397d5b0fafae4ab6976736e9b3827`.
+The official Registry entry `io.github.ozgurcd/gograph` includes active immutable version `1.7.1`. Its exact API record is `https://registry.modelcontextprotocol.io/v0.1/servers/io.github.ozgurcd%2Fgograph/versions/1.7.1`. GitHub release `v1.7.1`, published 2026-09-11, is at `https://github.com/ozgurcd/gograph/releases/tag/v1.7.1`. The checked-in `server.json`, local and remote annotated tag, GitHub release, and Registry package hashes agree on 1.7.1; the tag dereferences to `7c5e4b0e7cd1daf0459d2cd5723bf0771dcf909d`.
 
 The immutable tag `v1.5.0` dereferences to implementation commit `e4f96315ec4edb805dddbdd584fffbc022f18c6d`. Workflow recovery commit `4299e2806a87c43343584f941159a413ade156d3` added the release-test binary prerequisite and an explicit existing-tag dispatch path without moving that tag. Successful release and Registry publication run `29242849952` used GitHub OIDC. The initial tag-triggered run failed before creating any release or Registry state because existing CLI contract tests expected `bin/gograph`; this was corrected on `main`, and the original tag was reverified and published through the safe dispatch path.
 
-Post-publication verification for v1.7.0 checked all 14 release assets and exact MCPB hashes. The six ordinary archives, six MCPBs, `checksums.txt`, and `server.json` are present; the native MCPB exposes 68 tools. Release workflow `34064579154` passed all verification, GitHub/Homebrew publication, GitHub OIDC Registry publication, and active-record verification. Release-source CI `34063890164`, recovery-main CI `34064577374`, and documentation deployments `34063890177` / `34064577395` passed.
+Post-publication verification for v1.7.1 checked all 14 release assets and exact MCPB hashes. The six ordinary archives, six MCPBs, `checksums.txt`, and `server.json` are present; the installed MCP server exposes 68 tools. Release workflow `34582231376` passed all verification, GitHub/Homebrew publication, GitHub OIDC Registry publication, and active-record verification. Release-source CI `34582231661` and documentation deployment `34582231679` passed. The feature commit is `2eb2d87`; the release coordinator committed metadata and atomically pushed main plus the new tag.
 
-Homebrew tap commit `a6bad5d` publishes cask 1.7.0 with structured `postflight_steps`. The installed `/opt/homebrew/bin/gograph` and a newly launched MCP process both report 1.7.0; `brew doctor` is clean. Installed-binary acceptance on identuum-idp-oss returned the identical 259 production routes in CLI and MCP across three pages. CLI page bytes were 28161/27116/17094; full MCP JSON-RPC page bytes were 23609/22562/14501. All route cursors and a two-page common-query cursor sample round-tripped, the new capability contracts were present, and the persisted repository graph remained byte-identical. Existing MCP processes still require restart after an upgrade.
+Homebrew tap commit `8a91b2b` publishes cask 1.7.1 with structured `postflight_steps`. Homebrew upgraded `/opt/homebrew/bin/gograph` from 1.7.0 to 1.7.1. Installed-binary acceptance verified that a strict precise build fails on an unrelated broken package without exclusions, succeeds with `--exclude-dirs=broken`, selects the two remaining production/test files, and records the exclusion. A fresh MCP process reports version 1.7.1, the same exclusions, and a fresh graph; its three `Kept` query rows exactly match CLI JSON, and the persisted artifact remains byte-identical. Existing MCP processes require restart after an upgrade.
+
+Acceptance caveat: on this Mac, a graph built from the fixture's physical `/private/tmp/...` directory was reported build-context-stale when MCP was started with its `/tmp/...` alias, even with the same exclusions and cwd. Starting MCP with the canonical physical path passed. This is a retained path-alias freshness limitation, not evidence that arbitrary alias spellings are interchangeable. Homebrew's automatic update introduced unrelated Xcode 27.0 / Command Line Tools availability warnings; no deprecated Gograph cask hook warning remains. No Apple tooling was deleted or upgraded.
+
+The release adds fingerprinted literal directory exclusions across AST/precise builds, CLI/MCP refresh, and workspace members. Selection completeness does not cover excluded code; imported excluded dependencies still must compile and safety validation remains enforced. See `docs/build-selection.md` for the maintained user-facing contract and the unindexed-dependency rebuild limitation.
 
 The initial v1.7.0 workflow `34063890449` correctly refused publication because preparation used Go 1.27.1 while the hosted compiler was 1.27.0. A local six-target rebuild with 1.27.0 reproduced every hosted mismatch exactly. Recovery commit `ec75c77` aligned the workflow compiler to 1.27.1, updated its regression assertion and maintainer guidance, then dispatched the original tag without changing it or bypassing hash checks.
 
