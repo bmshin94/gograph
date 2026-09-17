@@ -404,7 +404,7 @@ func usageText() string {
 
 commands:
   auto-release           bump, verify, commit, tag, and atomically push a patch release
-  build                  build all six deterministic MCP bundles
+  build                  build all four deterministic MCP bundles
   verify                 validate bundle layout, targets, versions, and hashes
   render-server          render deterministic Registry metadata from bundle hashes
   render-goreleaser      render a safe temporary GoReleaser snapshot configuration

@@ -75,10 +75,10 @@ operations, and local session metadata to that analyzed project.
 ## Supported release targets
 
 Each release provides a genuine MCPB ZIP containing `manifest.json`, `LICENSE`,
-and one CGO-disabled, self-contained gograph executable. The six
-OS/architecture targets are listed below. Unix bundles use `server/gograph`;
-Windows bundles use `server/gograph.exe`. As with other native applications,
-Darwin and Windows executables can use operating-system libraries.
+and one CGO-disabled, self-contained gograph executable. The four
+OS/architecture targets are listed below. Bundles use `server/gograph`.
+Darwin executables can use operating-system libraries. Windows binaries are
+no longer built or published, starting with v1.7.4.
 
 | Host | Go target | MCPB manifest platform | Asset suffix |
 |---|---|---|---|
@@ -86,8 +86,6 @@ Darwin and Windows executables can use operating-system libraries.
 | macOS on Apple silicon | `darwin/arm64` | `darwin` | `darwin_arm64.mcpb` |
 | Linux x86-64 | `linux/amd64` | `linux` | `linux_amd64.mcpb` |
 | Linux ARM64 | `linux/arm64` | `linux` | `linux_arm64.mcpb` |
-| Windows x86-64 | `windows/amd64` | `win32` | `windows_amd64.mcpb` |
-| Windows ARM64 | `windows/arm64` | `win32` | `windows_arm64.mcpb` |
 
 Release assets use the complete pattern
 `gograph_<version>_<goos>_<goarch>.mcpb`.
@@ -97,7 +95,7 @@ Release assets use the complete pattern
 The current official `server.json` package format has no standardized OS or
 CPU selector. The MCPB manifest can declare `darwin`, `linux`, or `win32`, but
 has no standard CPU-architecture field, and clients see that manifest only
-after downloading the bundle. Consequently, a Registry entry can list all six
+after downloading the bundle. Consequently, a Registry entry can list all four
 valid packages but cannot guarantee that every client will automatically pick
 the native one.
 
@@ -177,7 +175,7 @@ The release implementation is pinned to these official formats and tools:
 
 Treat changes to any pin as a compatibility change: review the official schema
 and release notes, update the vendored validation input and tests, and verify
-all six targets before changing it. Do not download an unverified moving
+all four targets before changing it. Do not download an unverified moving
 `latest` publisher in CI. The release workflow checks the pinned publisher
 archive's SHA-256 digest and embedded version before execution.
 
@@ -203,7 +201,7 @@ selected remote must push to the official `ozgurcd/gograph` repository; use
 `make release RELEASE_REMOTE=upstream` when that remote is not named `origin`.
 It then:
 
-1. Updates the version metadata and builds the six deterministic MCPBs.
+1. Updates the version metadata and builds the four deterministic MCPBs.
 2. Renders `server.json` from their immutable versioned URLs and SHA-256
    hashes.
 3. Runs the complete repository verification suite, validates the schemas,
@@ -214,7 +212,7 @@ It then:
    archives with a pinned, non-publishing GoReleaser snapshot whose MCPB and
    output paths remain inside the temporary release transaction. Grype scans
    the declared module graph in `go.mod`, the freshly rebuilt native binary,
-   and each of the exact six fresh `.tar.gz`/`.zip` GoReleaser archives; a
+   and each of the exact four fresh `.tar.gz`/`.zip` GoReleaser archives; a
    missing or extra archive fails closed. MCPBs retain their separate
    schema/layout/hash/build-metadata and native smoke verification.
 4. Commits only the generated version/release metadata and creates an
@@ -254,7 +252,7 @@ the atomic push can succeed.
 
 Automatic version selection is patch-only. For an owner-approved minor version,
 prepare it explicitly: align `.bumpversion.cfg` and `plugin.json`, give the new
-`RELEASE_NOTES.md` section its version/date, build all six MCPBs with that version
+`RELEASE_NOTES.md` section its version/date, build all four MCPBs with that version
 into a new repository-local temporary directory, and use `render-server` to
 generate `server.json` from their actual hashes. Commit the aligned metadata
 and create an annotated local `v<version>` tag at that exact commit.
@@ -265,7 +263,7 @@ release gate, checks that the version is unpublished, and atomically pushes the
 commit and tag without incrementing the version. Do not push the prepared tag
 before this verification, reuse a published version, or move an existing tag.
 
-GoReleaser publishes the ordinary archives, six MCPBs, `server.json`, and
+GoReleaser publishes the ordinary archives, four MCPBs, `server.json`, and
 checksums from the verified tag. The workflow then idempotently reconciles the
 generated Homebrew cask, waits until every Registry-referenced asset is
 publicly available, authenticates with `mcp-publisher login github-oidc`, and

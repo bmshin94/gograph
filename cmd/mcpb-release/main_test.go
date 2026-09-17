@@ -257,10 +257,10 @@ func TestGitHubReleaseStateRejectsIncompleteRelease(t *testing.T) {
 
 func TestGitHubReleaseStateVerifiesDownloadedMCPBs(t *testing.T) {
 	if testing.Short() {
-		t.Skip("cross-compiles the six published MCPB fixtures")
+		t.Skip("cross-compiles the four published MCPB fixtures")
 	}
 	const version = "1.5.0"
-	// Cold CI runners cross-compile all six targets while other package tests
+	// Cold CI runners cross-compile all four targets while other package tests
 	// may be doing the same work. Keep a hard bound without making 3 minutes a
 	// hidden performance requirement for release-fixture verification.
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)

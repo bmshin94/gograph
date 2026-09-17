@@ -29,8 +29,6 @@ var Targets = []Target{
 	{GOOS: "darwin", GOARCH: "arm64", Platform: "darwin"},
 	{GOOS: "linux", GOARCH: "amd64", Platform: "linux"},
 	{GOOS: "linux", GOARCH: "arm64", Platform: "linux"},
-	{GOOS: "windows", GOARCH: "amd64", Platform: "win32"},
-	{GOOS: "windows", GOARCH: "arm64", Platform: "win32"},
 }
 
 // SupportedTargets returns a copy so callers cannot change the canonical
@@ -49,7 +47,7 @@ func TargetFor(goos, goarch string) (Target, bool) {
 	return Target{}, false
 }
 
-// Validate rejects targets outside the six release combinations and catches
+// Validate rejects targets outside the four release combinations and catches
 // inconsistent MCPB platform identifiers.
 func (t Target) Validate() error {
 	if slices.Contains(Targets, t) {

@@ -1,6 +1,9 @@
 # Release Notes
 
-## v1.7.3 — 2026-09-17
+## v1.7.4 — 2026-09-17
+
+- Windows binaries are no longer built or published; macOS and Linux targets are unchanged.
+- The v1.7.3 workflow was cancelled before publication to apply this owner decision; its tag remains unchanged.
 
 - Fixed MCP source/context structured responses that carried only graph state
   even when compatibility text contained an answer or error. The new

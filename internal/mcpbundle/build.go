@@ -21,7 +21,7 @@ type Artifact struct {
 }
 
 // BuildAll cross-compiles, packages, validates, and publishes to outputDir all
-// six supported MCPB assets. It stages every artifact before changing the
+// four supported MCPB assets. It stages every artifact before changing the
 // output directory and refuses to replace a different existing asset.
 func BuildAll(ctx context.Context, repositoryRoot, outputDir, version string) ([]Artifact, error) {
 	if err := ValidateVersion(version); err != nil {
@@ -135,7 +135,7 @@ func VerifyAll(inputDir, version string) ([]Artifact, error) {
 }
 
 // VerifyAllHashes also compares every asset with a caller-provided SHA-256
-// map. When expected is non-nil it must contain exactly the six asset names.
+// map. When expected is non-nil it must contain exactly the four asset names.
 func VerifyAllHashes(inputDir, version string, expected map[string]string) ([]Artifact, error) {
 	if err := ValidateVersion(version); err != nil {
 		return nil, err

@@ -41,7 +41,7 @@ func TestMakeVulnerabilityChecksUseFreshExplicitInputs(t *testing.T) {
 	assertOrderedText(t, release,
 		"goreleaser/v2@v2.17.0 release",
 		`for artifact in "`+output+`/goreleaser-dist"/gograph_*.tar.gz`,
-		`if [ "$count" -ne 6 ]`,
+		`if [ "$count" -ne 4 ]`,
 		output+`/goreleaser-dist/gograph_Darwin_arm64.tar.gz`,
 		`grype-contract "file:$artifact" --fail-on high`,
 	)
@@ -68,8 +68,6 @@ func TestMakeReleaseArtifactScanRequiresTheExactArchiveSet(t *testing.T) {
 		"gograph_Darwin_x86_64.tar.gz",
 		"gograph_Linux_arm64.tar.gz",
 		"gograph_Linux_x86_64.tar.gz",
-		"gograph_Windows_arm64.zip",
-		"gograph_Windows_x86_64.zip",
 	}
 	for _, name := range names {
 		if err := os.WriteFile(filepath.Join(dist, name), []byte("fixture"), 0o644); err != nil {
@@ -90,7 +88,7 @@ func TestMakeReleaseArtifactScanRequiresTheExactArchiveSet(t *testing.T) {
 	if err := os.Remove(missing); err != nil {
 		t.Fatal(err)
 	}
-	extra := filepath.Join(dist, "gograph_Unexpected_arm64.tar.gz")
+	extra := filepath.Join(dist, "gograph_Windows_arm64.zip")
 	if err := os.WriteFile(extra, []byte("fixture"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +101,7 @@ func TestMakeReleaseArtifactScanRequiresTheExactArchiveSet(t *testing.T) {
 		t.Fatal(err)
 	}
 	output, err = runMake(makePath, repositoryRoot, args...)
-	if err == nil || !strings.Contains(string(output), "Expected 6 freshly generated release archives, found 7") {
+	if err == nil || !strings.Contains(string(output), "Expected 4 freshly generated release archives, found 5") {
 		t.Fatalf("extra release archive was accepted: %v\n%s", err, output)
 	}
 }
@@ -188,8 +186,11 @@ func TestReleaseUsesCurrentHomebrewCaskPublishing(t *testing.T) {
 				"homebrew_casks:",
 				"binaries:",
 				"com.apple.quarantine",
+				"      - linux",
+				"      - darwin",
+				"Windows binaries are no longer built or published",
 			},
-			forbidden: []string{"\nbrews:", "directory: Formula"},
+			forbidden: []string{"\nbrews:", "directory: Formula", "- windows", "goos: windows"},
 		},
 		{
 			path: ".github/workflows/release.yml",

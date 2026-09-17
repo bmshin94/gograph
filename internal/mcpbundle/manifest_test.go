@@ -17,8 +17,6 @@ func TestManifestForEverySupportedTarget(t *testing.T) {
 		"gograph_1.5.0_darwin_arm64.mcpb",
 		"gograph_1.5.0_linux_amd64.mcpb",
 		"gograph_1.5.0_linux_arm64.mcpb",
-		"gograph_1.5.0_windows_amd64.mcpb",
-		"gograph_1.5.0_windows_arm64.mcpb",
 	}
 	if len(Targets) != len(wantNames) {
 		t.Fatalf("Targets has %d entries, want %d", len(Targets), len(wantNames))

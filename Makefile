@@ -57,17 +57,15 @@ scan-release-artifacts:
 			[ -f "$$artifact" ] || continue; \
 			count=$$((count + 1)); \
 		done; \
-		if [ "$$count" -ne 6 ]; then \
-			echo "Expected 6 freshly generated release archives, found $$count."; \
+		if [ "$$count" -ne 4 ]; then \
+			echo "Expected 4 freshly generated release archives, found $$count."; \
 			exit 1; \
 		fi; \
 		for artifact in \
 			"$(RELEASE_DIST)/gograph_Darwin_arm64.tar.gz" \
 			"$(RELEASE_DIST)/gograph_Darwin_x86_64.tar.gz" \
 			"$(RELEASE_DIST)/gograph_Linux_arm64.tar.gz" \
-			"$(RELEASE_DIST)/gograph_Linux_x86_64.tar.gz" \
-			"$(RELEASE_DIST)/gograph_Windows_arm64.zip" \
-			"$(RELEASE_DIST)/gograph_Windows_x86_64.zip"; do \
+			"$(RELEASE_DIST)/gograph_Linux_x86_64.tar.gz"; do \
 			if [ ! -f "$$artifact" ]; then \
 				echo "Missing expected release archive $$artifact."; \
 				exit 1; \

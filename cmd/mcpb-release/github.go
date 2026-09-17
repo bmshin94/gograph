@@ -238,8 +238,6 @@ func ordinaryReleaseAssets() []string {
 		"gograph_Darwin_x86_64.tar.gz",
 		"gograph_Linux_arm64.tar.gz",
 		"gograph_Linux_x86_64.tar.gz",
-		"gograph_Windows_arm64.zip",
-		"gograph_Windows_x86_64.zip",
 	}
 }
 
