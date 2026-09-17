@@ -4057,11 +4057,7 @@ func runContext(args []string) int {
 	term := strings.Join(termParts, " ")
 	result := search.Context(g, root, term, exactMatch)
 	if result == nil {
-		if jsonMode {
-			return PrintJSON(okEnvelope("context", term, nil, 0))
-		}
-		fmt.Printf("No symbol found matching %q.\n", term)
-		return 0
+		return failCommandf("context", "symbol '%s' not found", term)
 	}
 	if jsonMode {
 		return PrintJSON(okEnvelope("context", term, search.NewContextPayload(term, result), 1))

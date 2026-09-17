@@ -73,7 +73,7 @@ func TestPoisonedGraphCannotReadSourceSymlink(t *testing.T) {
 	}
 }
 
-func TestSourceSearchesPastUnsafeAmbiguousMatches(t *testing.T) {
+func TestSourceRefusesUnsafeAmbiguityAndReadsSelectedSafeMatch(t *testing.T) {
 	base := t.TempDir()
 	root := filepath.Join(base, "repository")
 	if err := os.MkdirAll(root, 0o755); err != nil {
@@ -104,8 +104,12 @@ func TestSourceSearchesPastUnsafeAmbiguousMatches(t *testing.T) {
 	})
 
 	source, err := search.Source(g, root, "SafeChoice")
+	if err == nil || !strings.Contains(err.Error(), "ambiguous") || !strings.Contains(err.Error(), "safe.go") || !strings.Contains(err.Error(), "linked-a.go") || source != "" {
+		t.Fatalf("Source must refuse ambiguous matches with candidates: source=%q err=%v", source, err)
+	}
+	source, err = search.Source(g, root, "safe")
 	if err != nil {
-		t.Fatalf("Source skipped later safe match: %v", err)
+		t.Fatalf("Source refused selected safe match: %v", err)
 	}
 	if !strings.Contains(source, "func SafeChoice() {}") {
 		t.Fatalf("Source result = %q, want safe match", source)

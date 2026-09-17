@@ -2,7 +2,7 @@
 title: Query snapshot, identity, and confidence contract
 type: decision
 status: current
-updated: 2026-09-06
+updated: 2026-09-17
 sources: []
 ---
 
@@ -75,3 +75,18 @@ These are repository-local design decisions, not externally ingested claims.
 Future agents should verify source/tests and actual publication state before
 reusing a version or asserting a release is available. Restart running MCP
 processes after upgrading; replacing the executable does not update live schemas.
+
+
+## Read answers are independent of their presentation
+
+2026-09-17: Direct v1.7.2 stdio measurements showed that source/context retained
+the answer in MCP text but supplied only graph provenance in structured content.
+The new gograph.read.v1 structured response includes the answer or named refusal.
+This separates a presentation defect from source extraction: the latter already
+worked for the measured symbol. A missing context now refuses on CLI and MCP;
+source ambiguity names candidates, and a 65536-byte source budget refuses with
+the measured size. Indexed-but-unreadable source is named in the read and in
+graph_state.read_diagnostic without changing graph precision or freshness.
+See docs/query-contracts.md and internal/mcp/read_result_test.go for the contract
+and fixture proof. The consumer gograph-first hook belongs to its harness and
+was not changed.

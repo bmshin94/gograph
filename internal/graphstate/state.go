@@ -70,6 +70,9 @@ type State struct {
 	Precision     Precision    `json:"precision"`
 	Refresh       Refresh      `json:"refresh"`
 	Persistence   Persistence  `json:"persistence"`
+	// ReadDiagnostic reports why this request could not serve indexed source.
+	// It never changes the independent analysis precision or freshness axes.
+	ReadDiagnostic string `json:"read_diagnostic,omitempty"`
 }
 
 func New(g *graph.Graph, source Source, freshness Freshness, refresh Refresh, persistence Persistence) State {

@@ -2,7 +2,7 @@
 title: Project Identity and Architecture
 type: project
 status: current
-updated: 2026-08-27
+updated: 2026-09-17
 sources:
   - SRC-20260614-gograph-legacy-project
 ---
@@ -55,7 +55,7 @@ Repository `path`/`gograph_path` and workspace `workspace path`/`gograph_workspa
 
 ## MCP refresh policy
 
-Source-analysis MCP tools check the effective selected-file inventory, build/module fingerprint, per-file content digests, source-policy version, and replacement of the persisted graph artifact. Every refresh-backed result preserves its compatibility text and attaches a small `gograph.mcp-result.v1` companion in structured content plus `_meta.gograph_graph_state`. Its shared `gograph.graph-state.v1` value keeps source (persisted/in-memory), freshness (current/stale), completeness (complete/partial), precision (AST/precise/fallback), refresh, and persistence orthogonal; operation diagnostics are bounded and belong to their own refresh or persistence axis. CLI graph-backed JSON envelopes carry the same state schema for the exact persisted graph loaded by that command, while text `stats` and `stale` report the persisted state.
+Source-analysis MCP tools check the effective selected-file inventory, build/module fingerprint, per-file content digests, source-policy version, and replacement of the persisted graph artifact. Every refresh-backed result preserves its compatibility text and attaches a small `gograph.mcp-result.v1` (source/context instead use `gograph.read.v1` with the answer or refusal) companion in structured content plus `_meta.gograph_graph_state`. Its shared `gograph.graph-state.v1` value keeps source (persisted/in-memory), freshness (current/stale), completeness (complete/partial), precision (AST/precise/fallback), refresh, and persistence orthogonal; operation diagnostics are bounded and belong to their own refresh or persistence axis. CLI graph-backed JSON envelopes carry the same state schema for the exact persisted graph loaded by that command, while text `stats` and `stale` report the persisted state.
 
 A persisted graph produced under a different effective `GOWORK` or build selection is stale and remains a fail-closed trust boundary: a failed refresh never silently serves those mismatched facts. Other operational refresh failures may serve the last trusted stale graph with `freshness=stale` and a refresh diagnostic. Failed precise enrichment may serve a current in-memory fallback with `precision=fallback`; neither stale nor fallback degradation is silently published. A later successfully decoded precise publication is adopted even when overlapping builds give it an earlier build-start `GeneratedAt`, and a precise or precise-fallback session never adopts an AST-only downgrade. Source changes reparse changed package ASTs and reuse unchanged package records; precise mode still recomputes repository-wide CHA/SSA. Snapshot-style MCP `stale`, default `changes`, and `stats` attach the state of the persisted artifact or startup fallback they actually inspect rather than the live refresh state.
 

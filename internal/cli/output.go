@@ -58,8 +58,15 @@ type Envelope struct {
 // cleanly (exit 0) unless Status is "error", in which case it exits 1.
 // This function never returns.
 func PrintJSON(env Envelope) int {
-	if env.GraphState == nil && env.Status != "error" && commandReportsGraphState(env.Command) {
+	isRead := env.Command == "source" || env.Command == "context"
+	if env.GraphState == nil && (env.Status != "error" || isRead) && commandReportsGraphState(env.Command) {
 		env.GraphState = currentOutputGraphState()
+	}
+	if isRead && env.GraphState != nil {
+		env.GraphState.ReadDiagnostic = env.Error
+		if payload, ok := env.Results.(search.ContextPayload); ok {
+			env.GraphState.ReadDiagnostic = payload.SourceError
+		}
 	}
 	data, err := json.MarshalIndent(env, "", "  ")
 	if err != nil {

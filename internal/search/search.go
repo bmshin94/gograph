@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/ozgurcd/gograph/internal/graph"
@@ -1050,6 +1051,14 @@ func Source(g *graph.Graph, rootDir, symbolName string) (string, error) {
 	if len(targets) == 0 {
 		return "", fmt.Errorf("symbol '%s' not found", symbolName)
 	}
+	if len(targets) > 1 {
+		candidates := make([]string, 0, len(targets))
+		for _, target := range targets {
+			candidates = append(candidates, fmt.Sprintf("%s (%s:%d)", target.ID, target.File, target.Line))
+		}
+		sort.Strings(candidates)
+		return "", fmt.Errorf("source for %q is ambiguous; select a candidate: %s", symbolName, strings.Join(candidates, "; "))
+	}
 
 	var results []string
 	var readErrs []error
@@ -1097,7 +1106,12 @@ func Source(g *graph.Graph, rootDir, symbolName string) (string, error) {
 		return "", fmt.Errorf("source for %q is unavailable: %w", symbolName, errors.Join(readErrs...))
 	}
 
-	return strings.Join(results, "\n\n---\n\n"), nil
+	code := strings.Join(results, "\n\n---\n\n")
+	const maxSourceBytes = 64 * 1024
+	if len(code) > maxSourceBytes {
+		return "", fmt.Errorf("source for %q is %d bytes, exceeding the %d byte budget", symbolName, len(code), maxSourceBytes)
+	}
+	return code, nil
 }
 
 // Orphans finds functions and methods that are never explicitly called in the codebase.

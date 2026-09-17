@@ -142,3 +142,37 @@ Workspace loads cache only successful deterministic-overlay verification
 receipts, in a fixed 16-entry cache. Every load still verifies current member
 source paths, freshness, module ownership, and artifact bytes. A cache hit
 cannot authorize a stale, substituted, or unsafe member.
+
+
+## Source and context reads
+
+CLI `source SYMBOL --json` and `context SYMBOL --json` retain their existing
+version-1 CLI envelopes. MCP `gograph_source` and `gograph_context` now supply
+`gograph.read.v1` structured content in place of the provenance-only legacy
+companion. This is a new read schema, not a silent change to
+`gograph.mcp-result.v1`. Existing MCP text answers are preserved.
+
+The read schema carries `command`, `status` (`ok`, `refused`, or `partial`),
+`graph_state`, and the answer: `source` for source; the existing context fields
+(`node`, `nodes`, `source`, `role`, callers, callees, tests) for context.
+A refused read has `reason` and MCP `isError: true`. A missing context is now a
+named refusal on both transports, not a successful empty object. A partial
+context retains its node evidence and carries `source_error` plus `reason`.
+
+Source selection refuses ambiguity and lists candidate identities and locations;
+select a fully qualified identity to disambiguate. Source reads retain the
+regular, repository-confined .go-file boundary. Missing files, unsafe paths,
+and invalid indexed line ranges are explicit refusals. The complete source block
+has a 65536-byte budget; an oversized block is refused with its actual byte size
+and the limit, never truncated. AST precision can serve source; precise analysis
+is not required. Metadata or precision alone never proves that source is readable.
+
+CLI and MCP graph state include additive `read_diagnostic` when a read refuses
+or a context's indexed node cannot supply source. This reports the finding that
+an indexed symbol could not be read without mislabeling analysis precision or
+freshness. It is scoped to that request, not a claim that every indexed source
+file was audited. Non-read tools retain their existing schemas and behavior.
+
+After upgrading, restart MCP servers and check `gograph_capabilities.version`.
+Consumers that prefer structured content must accept `gograph.read.v1`; legacy
+text consumers retain the existing source/context success content.

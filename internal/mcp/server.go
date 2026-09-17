@@ -241,6 +241,9 @@ func attachGraphState(result *mcp.CallToolResult, state graphstate.State) {
 	if result == nil {
 		return
 	}
+	if fields, ok := result.StructuredContent.(map[string]any); ok && fields["schema_version"] == "gograph.read.v1" {
+		state.ReadDiagnostic, _ = fields["reason"].(string)
+	}
 	if result.Meta == nil {
 		result.Meta = mcp.NewMetaFromMap(map[string]any{"gograph_graph_state": state})
 	} else {
@@ -428,6 +431,7 @@ func NewServer(
 				ctx = context.WithValue(ctx, requestSnapshotKey{}, snapshot)
 			}
 			result, err = handler(ctx, req)
+			attachReadResult(toolName, result)
 			if ctx.Err() != nil {
 				return nil, ctx.Err()
 			}
@@ -899,7 +903,7 @@ func NewServer(
 
 	// Tool: gograph_source
 	sourceTool := mcp.NewTool("gograph_source",
-		mcp.WithDescription("Retrieve verbatim Go source for a named function, method, struct, interface, type, variable, or constant, including complete bodies or declarations. The MCP server checks freshness before this call and refreshes in the current requested analysis mode; precise and precise_fallback graphs retry CHA/SSA after source changes. Source reads are confined to regular .go files beneath the analyzed repository and reject symlink path components. Read-only; no side effects. WHEN TO USE: When you need a specific implementation or declaration in full without loading a large file — a targeted alternative to reading the whole file. NOT TO USE: For call hierarchy information (use gograph_callers/gograph_callees); for AST metadata without the full source (use gograph_node). RETURNS: Raw Go source blocks with file paths and line numbers. It errors when the symbol is absent or no matching block can be read safely; an ambiguous query may still return its safely readable matches."),
+		mcp.WithDescription("Retrieve verbatim Go source for a named function, method, struct, interface, type, variable, or constant, including complete bodies or declarations. The MCP server checks freshness before this call and refreshes in the current requested analysis mode; precise and precise_fallback graphs retry CHA/SSA after source changes. Source reads are confined to regular .go files beneath the analyzed repository and reject symlink path components. Read-only; no side effects. WHEN TO USE: When you need a specific implementation or declaration in full without loading a large file — a targeted alternative to reading the whole file. NOT TO USE: For call hierarchy information (use gograph_callers/gograph_callees); for AST metadata without the full source (use gograph_node). RETURNS: Raw Go source blocks with file paths and line numbers. Text and gograph.read.v1 structured content both carry the source or a named refusal: absent symbol, ambiguity with candidates, unsafe/unreadable source, invalid indexed range, or source exceeding 65536 bytes (with its size)."),
 		mcp.WithString("symbol", mcp.Required(), mcp.Description("The name of the symbol to retrieve source for (supports short name 'ValidateToken', dot-notation 'graph.Graph', or fully-qualified ID)")),
 	)
 	addTool(sourceTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -1226,7 +1230,7 @@ func NewServer(
 
 	// Tool: gograph_context
 	contextTool := mcp.NewTool("gograph_context",
-		mcp.WithDescription("Fetch a pre-flight context bundle for a single Go symbol: AST node metadata, source code, direct callers, direct callees, linked test functions, and architectural role classification — all in one call. The MCP server checks freshness before this call and refreshes in the current requested analysis mode; precise and precise_fallback graphs retry CHA/SSA after source changes. Read-only analysis; an active audit session may append local command telemetry. Set uncommitted=true to bundle context for all currently modified symbols at once. WHEN TO USE: As the first call before editing a symbol — eliminates 4–5 separate tool roundtrips. NOT TO USE: For package-level orientation (use gograph_focus); for transitive blast radius (use gograph_impact). RETURNS: JSON with node (first match), nodes[] (all matches), source, callers[], callees[], tests[], test_results[], and top-level role; empty object {} when symbol not found. With uncommitted=true, returns a contexts[] array; count:0 when no uncommitted symbols exist."),
+		mcp.WithDescription("Fetch a pre-flight context bundle for a single Go symbol: AST node metadata, source code, direct callers, direct callees, linked test functions, and architectural role classification — all in one call. The MCP server checks freshness before this call and refreshes in the current requested analysis mode; precise and precise_fallback graphs retry CHA/SSA after source changes. Read-only analysis; an active audit session may append local command telemetry. Set uncommitted=true to bundle context for all currently modified symbols at once. WHEN TO USE: As the first call before editing a symbol — eliminates 4–5 separate tool roundtrips. NOT TO USE: For package-level orientation (use gograph_focus); for transitive blast radius (use gograph_impact). RETURNS: JSON with node (first match), nodes[] (all matches), source, callers[], callees[], tests[], test_results[], and top-level role in both text and gograph.read.v1 structured content; a missing symbol is a named error. source_error reports a partial context when indexed metadata exists but source cannot be served, also named in graph_state.read_diagnostic. With uncommitted=true, returns a contexts[] array; count:0 when no uncommitted symbols exist."),
 		mcp.WithString("symbol", mcp.Description("The exact name, dot-notation 'graph.Graph', or ID of the symbol to retrieve context for.")),
 		mcp.WithBoolean("uncommitted", mcp.Description("If true, return context for all uncommitted modified symbols bundled in one response.")),
 		mcp.WithBoolean("exact", mcp.Description("Require an exact symbol-name or fully-qualified-ID match in single-symbol mode.")),
@@ -1278,7 +1282,7 @@ func NewServer(
 		}
 		result := search.Context(g, root, symbol, boolArg(args, "exact"))
 		if result == nil {
-			return mcp.NewToolResultText("{}"), nil
+			return mcp.NewToolResultError(fmt.Sprintf("symbol '%s' not found", symbol)), nil
 		}
 		resp := struct {
 			Summary string `json:"summary"`

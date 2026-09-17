@@ -130,7 +130,7 @@ persisted artifacts per call, then reparse changed packages after edits.
 exists and otherwise inspect the startup in-memory fallback. Precise and
 precise-fallback sessions still re-run repository-wide CHA/SSA. Every
 refresh-backed tool preserves its compatibility text and adds
-`gograph.mcp-result.v1` structured content plus
+`gograph.mcp-result.v1` (source/context instead use `gograph.read.v1` with the answer or refusal) structured content plus
 `_meta.gograph_graph_state`. The shared `gograph.graph-state.v1` value reports
 persisted/in-memory source, current/stale freshness, complete/partial parsing,
 AST/precise/fallback analysis, refresh outcome, and persistence outcome. A

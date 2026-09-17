@@ -1,5 +1,17 @@
 # Release Notes
 
+## v1.7.3 — 2026-09-17
+
+- Fixed MCP source/context structured responses that carried only graph state
+  even when compatibility text contained an answer or error. The new
+  `gograph.read.v1` schema carries the answer or named refusal independently.
+- Missing contexts now refuse on CLI and MCP. Source ambiguity lists candidates;
+  source over 65536 bytes refuses with its measured size instead of truncation.
+  Unreadable indexed source is disclosed in `graph_state.read_diagnostic` without
+  changing graph precision, freshness, analysis, or audit rules.
+- Restart MCP servers after upgrading. Structured clients must accept the new
+  read schema; existing source/context success text remains compatible.
+
 ## v1.7.2 — 2026-09-11
 
 - Fixed precise builds blocked by directory symlinks beneath explicitly excluded
